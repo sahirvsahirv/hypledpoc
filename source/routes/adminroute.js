@@ -104,13 +104,210 @@ const orgNameConfigStr = 'orgName';
 const userNameConfigStr = 'username';
 const signedCertStr = 'signedCert';
 const privateKeyStr = 'privateKey';
+// Sign each created user
+const signaturesAllOrgs = [];
 
-async function createClientForOrg(username, orgname) {
-  logger.info('****************** createClientForOrg - INSIDE FUNCTTION ************************');
+async function CreateChannel(i) {
+  logger.info('****************** CreateChannel - INSIDE FUNCTTION ************************');
+  logger.info('****************** JOINING CHANNEL ************************');
+  // loop through the orgname for join channel
+  // TODO: Remove array [0] for Org2 and Org3
+  // TODO: hack change it to substr later or devise another mechanism
+  // Create channel with the orderer in Org1
+  const username = Client.getConfigSetting(usernameConfig)[0][userNameConfigStr]; // 'admin';
+  logger.info(username);
+  logger.info('****************** printed userName from config  ************************');
+  // from the DEBUG watch
+  // "adminpw" Client.getConfigSetting("admins")[0]["secret"]
+  // Client.getConfigSetting("cryptoContent")[0]["orgName"]
+  const orgname = Client.getConfigSetting(cryptoContent)[i][orgNameConfigStr]; // 'org1';
+  logger.info(orgname);
+  logger.info('****************** printed ORGNAME from config  ************************');
   // first read in the file, this gives us a binary config envelope
   /* const envelopeBytes =.then(() => {
    fs.readFileSync(path.join(
    '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/channel-artifacts/channel.tx')); */
+  // have the nodeSDK extract out the config update
+  // need to create an object of Client to make extractChannelConfig visible
+  // http://beautifytools.com/yaml-validator.php
+  const config = '-connection-profile-path';
+  const networkStr = 'network';
+  let channelConfig = null;
+  let createChannelTxId = null;
+  // before configuring
+  // const client = Client.loadFromConfig('/home/hypledvm/go/src/utilitypoc/network/acmedevmode/connectionprofile.yaml');
+  // client.loadFromConfig('/home/hypledvm/go/src/utilitypoc/network/acmedevmode/org1.yaml');
+  // after configuring
+  logger.info(Client.getConfigSetting(networkStr + config));
+  logger.info('****************** printed the config file path ************************');
+  let client = Client.loadFromConfig(Client.getConfigSetting(networkStr + config));
+  logger.info(Client.getConfigSetting(upperCaseOrg(orgname) + config));
+  logger.info('****************** printed the orgname config file path ************************');
+  client.loadFromConfig(Client.getConfigSetting(upperCaseOrg(orgname) + config));
+
+  // const configUpdate = client.extractChannelConfig(envelopeBytes);
+  // const configSignature = client.signChannelConfig(configUpdate);
+  // debug(configSignature);
+  // console.log(client);
+  // do not join since when it is typecasted will not spread the object and show in console
+  logger.info('****************** client after loadfromconfig START ************************');
+  logger.info(client); // Does not type case and shows it fully
+  logger.info('****************** client after loadfromconfig END ************************');
+  // await needs the function - CreateChannel to be an async function
+  // manage return of a promise by making the calling function async
+  await client.initCredentialStores();
+  logger.info('****************** initCredentialStores ::: SUCCESS ************************');
+  // TODO: console.log expands it. Try DEBUG
+  logger.info(client);
+  logger.info('****************** printed client after calling initCredentialStores ************************');
+  // const username = 'admin';
+  if (username) {
+    const user = await client.getUserContext(username, true);
+    if (!user) {
+      // throw new Error('user was not found :', username);
+      // create a user context
+      logger.info('****************** getUserContext had no user ************************');
+      
+      const createduser = await client.createUser({
+        username: username, // 'admin'
+        mspid: orgnameToMSPName(orgname), // 'Org1MSP',
+        cryptoContent: {
+          privateKey: Client.getConfigSetting(cryptoContent)[i][privateKeyStr], // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk',
+          signedCert: Client.getConfigSetting(cryptoContent)[i][signedCertStr] // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem' 
+        },
+        skipPersistence: true // skip persistence - to resolve the error
+        // Cannot save user to state store when stateStore is null
+      });
+      logger.info('****************** Created user::SUCCESS ************************');
+      logger.info(createduser);
+      logger.info('****************** Created user::printed created user above for org 0 ************************');
+    } else { // created user
+      logger.info('****************** USER ALREADY EXISTS ::SUCCESS ************************');
+    }
+    // TODO: Move constants to a single place
+    const channelTxFile = 'channel.tx';
+    const channelTxfilepath = Client.getConfigSetting('CC_SRC_PATH') + '/' + channelTxFile; // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/channel-artifacts/channel.tx';
+    // The client has been loaded with Org1 and certs and admin username
+    // transaction created by the admin
+    // TODO: change it to non-admin based on user context
+    createChannelTxId = client.newTransactionID(true);
+    logger.info('****************** NEWTRANSACTIONID - tx_id received by the admin ************************');
+    logger.info(createChannelTxId);
+    logger.info('****************** NEWTRANSACTIONID - printed client.newTransactionID ************************');
+    const envelope = fs.readFileSync(channelTxfilepath);
+    // the binary config update used in the signing process. channel.tx took this info from configtx.yaml
+    // Download the platform specific binaries from here
+    // curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0
+    // bash bootstrap.sh -d -s
+    // ./configtxlator start
+    // curl -X POST --data-binary @genesis.block http://127.0.0.1:7059/protolator/decode/common.Block > genesis.json
+    // curl -X POST --data-binary @mychannel.tx http://127.0.0.1:7059/protolator/decode/common.Envelope > mychannel.json
+    channelConfig = client.extractChannelConfig(envelope);
+
+    const signature = client.signChannelConfig(channelConfig);
+    logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 0- DONE ************************');
+    logger.info(channelConfig);
+    logger.info(signature);
+    logger.info('****************** pushing signature for org 0 - DONE ************************');
+    signaturesAllOrgs.push(signature);
+    logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 0 - DONE ************************');
+    // return client; // return the client loaded with the user in org1 and certs and not createduser;
+  } // if (username)
+  // now set the user context - post this is successful - persists user to the state store
+  // TODO: how does it get client.createduser
+  // Extract the created user from  createUser
+  const createdUser = await client.getUserContext(username, true);
+  logger.info('****************** client.getUserContext::Post Creating the user::SUCCESS ************************');
+  const userPersisted = await client.setUserContext(createdUser, true);
+  logger.info('****************** USER PERSISTED::client.setUserContext::SUCCESS ************************');
+  logger.info(userPersisted);
+  logger.info('****************** USER PERSISTED::client.setUserContext::printed user persisted ************************');
+  const fabricCAClient = client.getCertificateAuthority();
+  logger.info('****************** GETCERTAUTHORITY - getting the enrolled admin::SUCCESS ************************');
+  logger.info(fabricCAClient);
+  logger.info('****************** GETCERTAUTHORITY - getting the enrolled admin::client.getCertificateAuthority::printed ************************');
+
+  if ((userPersisted != null) && (userPersisted.isEnrolled())) {
+    logger.info(userPersisted);
+    logger.info(userPersisted.isEnrolled());
+    logger.info('****************** client.setUserContext returned TRUE. USER persisted ************************');  
+  } else {
+    client = null;
+    logger.info('****************** client.setUserContext returned FALSE. USER not persisted ************************');  
+  }
+  debug(chalk.green('Creating channel'));
+  logger.info('****************** CREATING CHANNEL ************************');
+  if (client == null) {
+    throw new Error('getRegisteredUsers - client returned null');
+  }
+  const channelName = Client.getConfigSetting(channelNameStr);
+  // channel is created by the orderer initially
+  // each peer will join the channel by sending channel configuration to each of the peer nodes
+  // TODO: restructure Do this only if 0, 1, 2 are over
+  let createChannelRequest = null;
+  // if (i === 2) {  // ERROR: Each org creates it own channel 
+  createChannelRequest = {
+    name: channelName, // 'mychannel',
+    orderer: ordererName, // 'orderer.acme.com',
+    signatures: signaturesAllOrgs, // [signature],
+    config: channelConfig,
+    txId: createChannelTxId
+  };
+  const channel = client.getChannel(channelName);
+  if (!channel) {
+    // create a channel
+    // TO create the channel - the network should be running
+    const response = await client.createChannel(createChannelRequest);
+    if (response) {
+      logger.info('****************** CREATECHANNEL - DONE ************************');
+      logger.info(response);
+      logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
+    } else {
+      logger.info('****************** CREATECHANNEL - FAILED ************************');
+    }// create channel failed
+  } // if channel does not exist create a channel
+  // } // only if i === 2
+  // exists because we created it now - or it already exists
+  // Comment end - trying to sign all orgs with the configtxlator
+  return client;
+} // CreateChannel
+/*
+async function getRegisteredUsers(username, orgname) {
+  logger.info('****************** getRegisteredUser - INSIDE FUNCTTION ************************');
+  // The async function written to separate code
+  let client = await getClientForOrgs(username, orgname);
+  // now set the user context - post this is successful - persists user to the state store
+  // TODO: how does it get client.createduser
+  // Extract the created user from  createUser
+  const createdUser = await client.getUserContext(username, true);
+  logger.info('****************** client.getUserContext::Post Creating the user::SUCCESS ************************');
+  const userPersisted = await client.setUserContext(createdUser, true);
+  logger.info('****************** USER PERSISTED::client.setUserContext::SUCCESS ************************');
+  logger.info(userPersisted);
+  logger.info('****************** USER PERSISTED::client.setUserContext::printed user persisted ************************');
+  const fabricCAClient = client.getCertificateAuthority();
+  logger.info('****************** GETCERTAUTHORITY - getting the enrolled admin::SUCCESS ************************');
+  logger.info(fabricCAClient);
+  logger.info('****************** GETCERTAUTHORITY - getting the enrolled admin::client.getCertificateAuthority::printed ************************');
+
+  if ((userPersisted != null) && (userPersisted.isEnrolled())) {
+    logger.info(userPersisted);
+    logger.info(userPersisted.isEnrolled());
+    logger.info('****************** client.setUserContext returned FALSE. USER not persisted ************************');  
+  } else {
+    client = null;
+  }
+  return client;
+}
+*/
+// const utils = require('fabric-client/lib/utils');
+/*
+async function createClientForOrg(username, orgname) {
+  logger.info('****************** createClientForOrg - INSIDE FUNCTTION ************************');
+  // first read in the file, this gives us a binary config envelope
+  // const envelopeBytes =.then(() => {
+  // fs.readFileSync(path.join(
+  // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/channel-artifacts/channel.tx')); 
   // have the nodeSDK extract out the config update
   // need to create an object of Client to make extractChannelConfig visible
   // http://beautifytools.com/yaml-validator.php
@@ -144,7 +341,46 @@ async function createClientForOrg(username, orgname) {
   logger.info('****************** printed client after calling initCredentialStores ************************');
   return client;
 }
-// const utils = require('fabric-client/lib/utils');
+
+async function createClientForOrgs(username, orgname) {
+  logger.info('****************** createClientForOrg - INSIDE FUNCTTION ************************');
+  // first read in the file, this gives us a binary config envelope
+  // const envelopeBytes =.then(() => {
+  // fs.readFileSync(path.join(
+  // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/channel-artifacts/channel.tx')); 
+  // have the nodeSDK extract out the config update
+  // need to create an object of Client to make extractChannelConfig visible
+  // http://beautifytools.com/yaml-validator.php
+  const config = '-connection-profile-path';
+  const networkStr = 'network';
+  // before configuring
+  // const client = Client.loadFromConfig('/home/hypledvm/go/src/utilitypoc/network/acmedevmode/connectionprofile.yaml');
+  // client.loadFromConfig('/home/hypledvm/go/src/utilitypoc/network/acmedevmode/org1.yaml');
+  // after configuring
+  logger.info(Client.getConfigSetting(networkStr + config));
+  logger.info('****************** printed the config file path ************************');
+  const client = Client.loadFromConfig(Client.getConfigSetting(networkStr + config));
+  logger.info(Client.getConfigSetting(upperCaseOrg(orgname) + config));
+  logger.info('****************** printed the orgname config file path ************************');
+  client.loadFromConfig(Client.getConfigSetting(upperCaseOrg(orgname) + config));
+
+  // const configUpdate = client.extractChannelConfig(envelopeBytes);
+  // const configSignature = client.signChannelConfig(configUpdate);
+  // debug(configSignature);
+  // console.log(client);
+  // do not join since when it is typecasted will not spread the object and show in console
+  logger.info('****************** client after loadfromconfig START ************************');
+  logger.info(client); // Does not type case and shows it fully
+  logger.info('****************** client after loadfromconfig END ************************');
+  // await needs the function - CreateChannel to be an async function
+  // manage return of a promise by making the calling function async
+  await client.initCredentialStores();
+  logger.info('****************** initCredentialStores ::: SUCCESS ************************');
+  // TODO: console.log expands it. Try DEBUG
+  logger.info(client);
+  logger.info('****************** printed client after calling initCredentialStores ************************');
+  return client;
+} // createClientForOrgs 
 async function getClientForOrg(username, orgname) {
   logger.info('****************** getClientForOrg - INSIDE FUNCTTION ************************');
   const client = await createClientForOrg(username, orgname);
@@ -196,12 +432,21 @@ async function signClientsForOrgs(username, orgname) {
       // create a user context
       logger.info('****************** getUserContext had no user - creating a user for all 3 orgs ************************');
       // TODO: Remove array [0] for Org2 and Org3
+      // TODO: hack change it to substr later or devise another mechanism
+      let i = 0;
+      if (orgname === 'org1') {
+        i = 0;
+      } else if (orgname === 'org2') {
+        i = 1;
+      } else if (orgname === 'org3') {
+        i = 2;
+      }
       let createduser = await client.createUser({
         username: username, // 'admin'
         mspid: orgnameToMSPName(orgname), // 'Org1MSP',
         cryptoContent: {
-          privateKey: Client.getConfigSetting(cryptoContent)[0][privateKeyStr], // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk',
-          signedCert: Client.getConfigSetting(cryptoContent)[0][signedCertStr] // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem' 
+          privateKey: Client.getConfigSetting(cryptoContent)[i][privateKeyStr], // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk',
+          signedCert: Client.getConfigSetting(cryptoContent)[i][signedCertStr] // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem' 
         },
         skipPersistence: true // skip persistence - to resolve the error
         // Cannot save user to state store when stateStore is null
@@ -219,61 +464,13 @@ async function signClientsForOrgs(username, orgname) {
       logger.info('****************** pushing signature for org 0 - DONE ************************');
       signatures.push(signature);
       logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 0 - DONE ************************');
-
-      // TODO: use async for loops 
-      // TODO: use the files org2.yaml and org3.yaml and use crypto store
-      // TODO: Remove array [0] for Org2 and Org3
-      createduser = await client.createUser({
-        username: username, // 'admin'
-        mspid: orgnameToMSPName(orgname), // 'Org1MSP',
-        cryptoContent: {
-          privateKey: Client.getConfigSetting(cryptoContent)[2][privateKeyStr], // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk',
-          signedCert: Client.getConfigSetting(cryptoContent)[2][signedCertStr] // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem' 
-        },
-        skipPersistence: true // skip persistence - to resolve the error
-        // Cannot save user to state store when stateStore is null
-      });
-      logger.info('****************** Created user for all 3 ORGS::SUCCESS ************************');
-      logger.info(createduser);
-      logger.info('****************** Created user::printed created user above for org 2 ************************');
-
-      const signature2 = client.signChannelConfig(channelConfig);
-      logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 2- DONE ************************');
-      logger.info(channelConfig);
-      logger.info(signature2);
-      logger.info('****************** pushing signature for org 2 - DONE ************************');
-      signatures.push(signature2);
-      logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 2 - DONE ************************');
-
-      // TODO: Remove array [0] for Org2 and Org3
-      createduser = await client.createUser({
-        username: username, // 'admin'
-        mspid: orgnameToMSPName(orgname), // 'Org1MSP',
-        cryptoContent: {
-          privateKey: Client.getConfigSetting(cryptoContent)[1][privateKeyStr], // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk',
-          signedCert: Client.getConfigSetting(cryptoContent)[1][signedCertStr] // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem' 
-        },
-        skipPersistence: true // skip persistence - to resolve the error
-        // Cannot save user to state store when stateStore is null
-      });
-      logger.info('****************** Created user for all 3 ORGS::SUCCESS ************************');
-      logger.info(createduser);
-      logger.info('****************** Created user::printed created user above for org1 ************************');
-      // return client; // return the client loaded with the user in org1 and certs and not createduser;
-
-      const signature1 = client.signChannelConfig(channelConfig);
-      logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 1- DONE ************************');
-      logger.info(channelConfig);
-      logger.info(signature1);
-      logger.info('****************** pushing signature for org 1 - DONE ************************');
-      signatures.push(signature1);
-      logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 1 - DONE ************************');      
     } else {
       logger.info('****************** USER ALREADY EXISTS ::SUCCESS ************************');
     }
   } // if (username)
   return client; // return the client loaded with the user in org1 and certs and not createduser;
 }
+
 async function getRegisteredUser(username, orgname) {
   logger.info('****************** getRegisteredUser - INSIDE FUNCTTION ************************');
   // The async function written to separate code
@@ -301,7 +498,7 @@ async function getRegisteredUser(username, orgname) {
   }
   return client;
 }
-
+*/
 function channelAddPeer(client, channel, peerStr, orgname) {
   // Peer object is not required since we have already loadedfromconfig
   // Due to the error while joining channel - add peer to channel and then join
@@ -332,35 +529,42 @@ function channelAddPeer(client, channel, peerStr, orgname) {
   return channel;
 }
 
+/*
 async function CreateChannel(userName, orgName) {
   debug(chalk.green('Creating channel'));
   logger.info('****************** CREATING CHANNEL ************************');
-  const client = await getRegisteredUser(userName, orgName);
+  const client = await getClientForOrgs(userName, orgName);
   if (client == null) {
-    throw new Error('getRegisteredUser - client returned null');
+    throw new Error('getRegisteredUsers - client returned null');
   }
-  // TODO: Move constants to a single place
-  const channelTxFile = 'channel.tx';
-  const channelTxfilepath = Client.getConfigSetting('CC_SRC_PATH') + '/' + channelTxFile; // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/channel-artifacts/channel.tx';
   const channelName = Client.getConfigSetting(channelNameStr);
-  // The client has been loaded with Org1 and certs and admin username
-  // transaction created by the admin
-  // TODO: change it to non-admin based on user context
-  const createChannelTxId = client.newTransactionID(true);
-  logger.info('****************** NEWTRANSACTIONID - tx_id received by the admin ************************');
-  logger.info(createChannelTxId);
-  logger.info('****************** NEWTRANSACTIONID - printed client.newTransactionID ************************');
-  const envelope = fs.readFileSync(channelTxfilepath);
-  // the binary config update used in the signing process. channel.tx took this info from configtx.yaml
-  // Download the platform specific binaries from here
-  // curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0
-  // bash bootstrap.sh -d -s
-  // ./configtxlator start
-  // curl -X POST --data-binary @genesis.block http://127.0.0.1:7059/protolator/decode/common.Block > genesis.json
-  // curl -X POST --data-binary @mychannel.tx http://127.0.0.1:7059/protolator/decode/common.Envelope > mychannel.json
-  const channelConfig = client.extractChannelConfig(envelope);
-  
-/*
+      
+  // channel is created by the orderer initially
+  // each peer will join the channel by sending channel configuration to each of the peer nodes
+  const createChannelRequest = {
+    name: channelName, // 'mychannel',
+    orderer: ordererName, // 'orderer.acme.com',
+    signatures: signaturesAllOrgs, // [signature],
+    config: channelConfig,
+    txId: createChannelTxId
+  };
+  const channel = client.getChannel(channelName);
+  if (!channel) {
+    // create a channel
+    // TO create the channel - the network should be running
+    const response = await client.createChannel(createChannelRequest);
+    if (response) {
+      logger.info('****************** CREATECHANNEL - DONE ************************');
+      logger.info(response);
+      logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
+    } else {
+      logger.info('****************** CREATECHANNEL - FAILED ************************');
+    }// create channel failed
+  } // if channel does not exist create a channel
+  // exists because we created it now - or it already exists
+  // Comment end - trying to sign all orgs with the configtxlator
+  return client;
+
   approach - 1
   // npm install superagent
   const response = request
@@ -402,63 +606,40 @@ async function CreateChannel(userName, orgName) {
       logger.info('****************** CREATECHANNEL - FAILED ************************');
     }// create channel failed
   } // if channel does not exist create a channel
-*/
+
   // Comment start - trying to sign all orgs with the configtxlator
   
-  const signature = client.signChannelConfig(channelConfig);
-  logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel - DONE ************************');
-  logger.info(channelConfig);
-  logger.info(signature);
-  logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel - DONE ************************');
+  
+  // Comment - already signed it in getRegisteredUsers - START
+  // const signature = client.signChannelConfig(channelConfig);
+  // logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel - DONE ************************');
+  // logger.info(channelConfig);
+  // logger.info(signature);
+  // logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel - DONE ************************');
+  // Comment - already signed it in getRegisteredUsers - END
+  
+
   // to get the ip address of a docker container
   // docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' container_name_or_id
-  // channel is created by the orderer initially
-  // each peer will join the channel by sending channel configuration to each of the peer nodes
-  const createChannelRequest = {
-    name: channelName, // 'mychannel',
-    orderer: ordererName, // 'orderer.acme.com',
-    signatures: [signature],
-    config: channelConfig,
-    txId: createChannelTxId
-  };
-  const channel = client.getChannel(channelName);
-  if (!channel) {
-    // create a channel
-    // TO create the channel - the network should be running
-    const response = await client.createChannel(createChannelRequest);
-    if (response) {
-      logger.info('****************** CREATECHANNEL - DONE ************************');
-      logger.info(response);
-      logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
-    } else {
-      logger.info('****************** CREATECHANNEL - FAILED ************************');
-    }// create channel failed
-  } // if channel does not exist create a channel
-  // exists because we created it now - or it already exists
-  // Comment end - trying to sign all orgs with the configtxlator
-  return client;
 } // end of createChannel function
-
-async function joinChannel() {
-  logger.info('****************** JOINING CHANNEL ************************');
-  // loop through the orgname for join channel
-  // Create channel with the orderer in Org1
-  const userName = Client.getConfigSetting(usernameConfig)[0][userNameConfigStr]; // 'admin';
-  logger.info(userName);
-  logger.info('****************** printed userName from config  ************************');
-  // from the DEBUG watch
-  // "adminpw" Client.getConfigSetting("admins")[0]["secret"]
-  // Client.getConfigSetting("cryptoContent")[0]["orgName"]
-  const orgName = Client.getConfigSetting(cryptoContent)[0][orgNameConfigStr]; // 'org1';
-  logger.info(orgName);
-  logger.info('****************** printed ORGNAME from config  ************************');
+*/
+async function joinChannel(i) {
   // calling the CreateChannel function created for seggregation
-  const client = await CreateChannel(userName, orgName);
+  // { Error: 2 UNKNOWN: access denied: channel [] creator org [Org1MSP] still exists
+  // TODO: async for loop
+  let client = await CreateChannel(i);
   const channelName = Client.getConfigSetting(channelNameStr);
   let channel = client.getChannel(channelName); // 'mychannel'
   logger.info('****************** GETCHANNEL - DONE ************************');
   logger.info(channel);
   logger.info('****************** GETCHANNEL - printed getChannel result ************************');
+  if (i === 0) {
+    channel = channelAddPeer(client, channel, peer0Org1, 'org1');
+  } else if (i === 1) {
+    channel = channelAddPeer(client, channel, peer0Org2, 'org2');
+  } else if (i === 2) {
+    channel = channelAddPeer(client, channel, peer0Org3, 'org3');
+  }
 
   const genesisBlockTxid = client.newTransactionID();
   const requestGenesisBlock = {
@@ -484,6 +665,48 @@ async function joinChannel() {
   logger.info('****************** GETGENSISBLOCK:: printed genesisBlock ************************');
   // Before adding the peers from different orgs initialize the peers from different orgs in the channel
   // we will take values from the connectionprofile.yaml
+  
+  try {
+    let arrPeerNames;
+    if (i === 0) {
+      arrPeerNames = [peer0Org1];
+    } else if (i === 1) {
+      arrPeerNames = [peer0Org2];
+    } else if (i === 2) {
+      arrPeerNames = [peer0Org3];
+    }
+    
+    const joinChannelRequest = {
+      targets: arrPeerNames,
+      block: genesisBlock,
+      txId: client.newTransactionID(true)
+    };
+    // proposalResponse[0]['message'] "2 UNKNOWN: chaincode error (status: 500, message: Cannot create ledger from genesis block, due to LedgerID already exists)"
+    // proposalResponse[0]['code'] 2
+    const channelpostsigning = client.getChannel(channelName);
+    const proposalResponse = await channelpostsigning.joinChannel(joinChannelRequest, 10000); // 10 secs
+    logger.info('****************** JOINCHANNEL:: CALLED ************************');
+    if ((proposalResponse[0].code === 2) && (proposalResponse[0].message === 'Cannot create ledger from genesis block, due to LedgerID already exists')) {
+      logger.info('****************** JOINCHANNEL:: ALREADY JOINED ************************');
+    }
+    console.log(proposalResponse);
+    logger.info('****************** JOINCHANNEL:: printed proposal response ************************');
+  } catch (err) {
+    logger.info('****************** JOINCHANNEL:: INSIDE CATCH ************************');
+    logger.info(err.message);
+    logger.info('****************** JOINCHANNEL:: ALREADY JOINED ************************');
+  }
+  
+  logger.info('****************** JOINCHANNEL:: SUCCESS ************************');
+  
+  // client = await CreateChannel(1);
+  // these two channels must be joined with Org2 and Org3 permissions
+  // channel = channelAddPeer(client, channel, peer0Org2, 'org2');
+  // channel = channelAddPeer(client, channel, peer0Org3, 'org3');
+
+  // client = await CreateChannel(0);
+
+  
 
 
   // Peer object is not required since we have already loadedfromconfig
@@ -496,15 +719,16 @@ async function joinChannel() {
   // TODO: sending orgname won't work since it is only org1 sent till now
   // adds only if not added before
 
-  channel = channelAddPeer(client, channel, peer0Org1, 'org1');
-  // these two channels must be joined with Org2 and Org3 permissions
-  channel = channelAddPeer(client, channel, peer0Org2, 'org2');
-  channel = channelAddPeer(client, channel, peer0Org3, 'org3');
+  
+  
 
-  const clientpostusersigning = await signClientsForOrgs(userName, orgName);
-  logger.info('****************** POST ALL ORGS SIGNING ************************');
-  logger.info(clientpostusersigning);
-  logger.info('****************** POST ALL ORGS SIGNING PRINTED ************************');
+  // comment not required - START
+  // const clientpostusersigning = await signClientsForOrgs(userName, orgName);
+  // logger.info('****************** POST ALL ORGS SIGNING ************************');
+  // logger.info(clientpostusersigning);
+  // logger.info('****************** POST ALL ORGS SIGNING PRINTED ************************');
+  // comment not required - END
+
   // approach 2 - try initialize to add the other orgs to the channel
   // the fabric-client reference - moved it to after adding peers
   // since it gave an error on debugger which said - could not initialize
@@ -541,30 +765,7 @@ async function joinChannel() {
   // const arrPeerNames = [peer0Org1, peer0Org2, peer0Org3];
   // [ { Error: 2 UNKNOWN: chaincode error (status: 500, message: Cannot create ledger from genesis block, due to LedgerID already exists)
   // [client-utils.js]: sendPeersProposal - Promise is rejected: Error: 2 UNKNOWN: access denied: channel [] creator org [Org1MSP]
-  try {
-    const arrPeerNames = [peer0Org2, peer0Org3];
-    const joinChannelRequest = {
-      targets: arrPeerNames,
-      block: genesisBlock,
-      txId: clientpostusersigning.newTransactionID(true)
-    };
-    // proposalResponse[0]['message'] "2 UNKNOWN: chaincode error (status: 500, message: Cannot create ledger from genesis block, due to LedgerID already exists)"
-    // proposalResponse[0]['code'] 2
-    const channelpostsigning = client.getChannel(channelName);
-    const proposalResponse = await channelpostsigning.joinChannel(joinChannelRequest, 10000); // 10 secs
-    logger.info('****************** JOINCHANNEL:: CALLED ************************');
-    if ((proposalResponse[0].code === 2) && (proposalResponse[0].message === 'Cannot create ledger from genesis block, due to LedgerID already exists')) {
-      logger.info('****************** JOINCHANNEL:: ALREADY JOINED ************************');
-    }
-    console.log(proposalResponse);
-    logger.info('****************** JOINCHANNEL:: printed proposal response ************************');
-  } catch (err) {
-    logger.info('****************** JOINCHANNEL:: INSIDE CATCH ************************');
-    if ((err.response.status === 500) && (err.response.message === 'Cannot create ledger from genesis block, due to LedgerID already exists')) {
-      logger.info('****************** JOINCHANNEL:: ALREADY JOINED ************************');
-    }
-  }
-  logger.info('****************** JOINCHANNEL:: SUCCESS ************************');
+  
 }
 
 function adminrouter(navigate) {
@@ -593,7 +794,9 @@ function adminrouter(navigate) {
     // now call nodejs functions to start BC
     // Register and enroll user
     logger.info('****************** INSIDE BUTTON CLICK ************************');
-    joinChannel();
+    joinChannel(0);
+    joinChannel(1);
+    joinChannel(2);
     res.redirect('/transact');
   });
   // return the const express.Router()
