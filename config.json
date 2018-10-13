@@ -1,0 +1,31 @@
+{
+   "host":"localhost",
+   "port":"4000",
+   "jwt_expiretime": "36000",
+   "channelName":"mychannel",
+   "CC_SRC_PATH":"./channel-artifacts",
+   "eventWaitTime":"30000",
+   "cryptoContent": [
+       {    
+            "orgName": "org1",
+            "privateKey": "./crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk",
+            "signedCert": "./crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem"
+       },
+       {    
+            "orgName": "org2",
+            "privateKey": "./crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/msp/keystore/14fbe370f909ed27ce7db74f76bc6a63265c3d9c1d11a324b6ff15c0e6c97e63_sk",
+            "signedCert": "./crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/msp/signcerts/peer0.org2.acme.com-cert.pem"
+       },
+       {    
+            "orgName": "org3",
+            "privateKey": "./crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/msp/keystore/ba1db36d02078ece914650aa4bf024e5990b4db0c75be722d18fd6c4cee703f9_sk",
+            "signedCert": "./crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/msp/signcerts/peer0.org3.acme.com-cert.pem"
+       }
+   ],
+   "admins":[
+      {
+         "username":"admin",
+         "secret":"adminpw"
+      }
+   ]
+}

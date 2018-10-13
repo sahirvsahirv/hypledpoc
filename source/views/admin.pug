@@ -1,0 +1,44 @@
+doctype html
+html(lang='en')
+  head
+    meta(http-equiv='content-type', content='text/html; charset=UTF-8')
+    meta(charset='utf-8')
+    title Navbar Static top Template
+    meta(name='generator', content='Bootply')
+    meta(name='viewport', content='width=device-width, initial-scale=1, maximum-scale=1')
+    link(href='css/bootstrap.min.css', rel='stylesheet')
+    //if lt IE 9
+      script(src='//html5shim.googlecode.com/svn/trunk/html5.js')
+    link(href='css/styles.css', rel='stylesheet')
+  body
+    .navbar.navbar-default.navbar-static-top
+      .container
+        .navbar-header
+          button.navbar-toggle(type='button', data-toggle='collapse', data-target='.navbar-collapse')
+            span.icon-bar
+            span.icon-bar
+            span.icon-bar
+          a.navbar-brand(href='#') DRAPP
+        .collapse.navbar-collapse
+          ul.nav.navbar-nav
+            li.active
+              a(href='#') Home
+            li
+              a(href='transact') Transact
+          ul.nav.navbar-nav.navbar-right
+            li
+              a(href='admin') Admin
+        // /.nav-collapse
+    .container
+      .text-center
+        h1 Admin page
+        p.lead
+          | YAHOO
+          br
+          | Uses nodejs with express and calls fabric SDK for nodejs underneath
+          form(method='POST')
+            button.btn.btn-primary(type='submit') StartBC
+    // /.container
+    // script references
+    script(src='//ajax.googleapis.com/ajax/libs/jquery/2.0.2/jquery.min.js')
+    script(src='js/bootstrap.min.js')
