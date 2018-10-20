@@ -2,13 +2,13 @@
 // TODO: take from key value store instead of harcoded values from config.json
 // TODO: Make a separate route with URL or from server for org and join
 // Path import should be the first import
-const path = require('path'); 
 const Constants = require('../constants.js');
 
 function getUserName() {
   // TODO: Move 0. 
   // Ok as of now since it is always going to be admin and 0 and also will move to Keyvalue store later
-  const username = Constants.hfc.getConfigSetting(Constants.usernameconfig)[0][Constants.username]; // 'admin';
+  // ERROR: the constants passed were messed up
+  const username = Constants.hfc.getConfigSetting(Constants.username)[0][Constants.usernameconfig]; // 'admin';
   Constants.logger.info(username);
   Constants.logger.info('****************** printed userName from config  ************************');
   return username;
@@ -38,11 +38,9 @@ function getClientConnectionFilePath() {
   // connprofilepathstr = 'network-connection-profile-path'
   // TODO: do away with config.js
   // Pick up the path from config.js
+  Constants.logger.info('****************** getClientConnectionFilePath - INSIDE FUNCTTION ************************');
   const connprofilepathstr = Constants.hfc.getConfigSetting(Constants.networkstr + Constants.configappendstr);
-  const completefilepath = connprofilepathstr + Constants.clientConnProfileFileName;
-  // two folders above
-  // Constants.hfc.setConfigSetting(connprofilepathstr, path.join(__dirname, Constants.clientconnprofilefilename));
-  Constants.logger.info(completefilepath);
+  Constants.logger.info(connprofilepathstr);
   Constants.logger.info('****************** printed the config file path ************************');
   /*
      Comment START: Required when key value store would be used
@@ -51,6 +49,8 @@ function getClientConnectionFilePath() {
      client.loadFromConfig(Client.getConfigSetting(upperCaseOrg(orgname) + config));
      Comment END: Required when key value store would be used
   */
+  // ERROR: No return statement was there
+  return connprofilepathstr;
 }
 module.exports.getClientConnectionFilePath = getClientConnectionFilePath;
 
@@ -80,6 +80,8 @@ function getOrgSignedCert(orgname) {
   } else if (orgname === Constants.ORG3) {
     i = 2;
   }
+  // ERROR: UnhandledPromiseRejectionWarning: TypeError: Cannot read property 'toString' of null
+  // Clicking on the link - takes you to signedCertPEM - Had missed this line - null was getting passed
   const signedCertFilePath = Constants.hfc.getConfigSetting(Constants.cryptocontentconfig)[i][Constants.signedcertstr];
   // '/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem' 
   return signedCertFilePath;

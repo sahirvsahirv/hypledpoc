@@ -5,8 +5,7 @@ const debug = require('debug');
 // const path = require('path');
 // const fs = require('fs');
 const Constants = require('../constants.js');
-const ClientHelper = require('./helper.js');
-
+const ClientUtils = require('../helper/clientUtils.js');
 // require for superagent - approach 1
 // const nocache = require('superagent-no-cache');
 //  const request = require('superagent');
@@ -74,26 +73,7 @@ function orgnameToMSPName(orgname) {
       break;
   }
   return MSPName;
-}const fs = require('fs');
-/const fs = require('fs'); switch case to string split
-fconst fs = require('fs');aseOrg(orgname) {
-  let upperOrg;
-  switch (orgname) {
-    case 'org1':
-      upperOrg = 'Org1';
-      break;
-    case 'org2':
-      upperOrg = 'Org2';
-      break;
-    case 'org3':
-      upperOrg = 'Org3';
-      break;
-    default:
-      upperOrg = null;
-      break;
-  }
-  return upperOrg;
-}const fs = require('fs');
+}
 // CONSTANTS
 const usernameConfig = 'admins';
 const cryptoContent = 'cryptoContent';
@@ -795,27 +775,47 @@ function adminrouter(navigate) {
 
     // now call nodejs functions to start BC
     // Register and enroll user
-    logger.info('****************** INSIDE BUTTON CLICK ************************');
-    let client = getClientForOrg();
-
+    Constants.logger.info('****************** INSIDE BUTTON CLICK ************************');
+    let client = ClientUtils.getClientForOrg();
+    // ERROR: UnhandledPromiseRejectionWarning: TypeError: client.newTransactionID is not a function
+    // at getTransactionId
+    // The prmomise for 'enrollClientForOrg' is pending and 'createChannelForOrg' - promise is rejected
+    // Try putting an await and an async to 'adminRouter' function
     let orgname = Constants.ORG1;
     let peername = Constants.peer0org1;
-    client = enrollClientForOrg(orgname, client);
-    client = createChannelForOrg(client);
-    client = ClientHelper.joinChannel(orgname, peername, client);
-    
+    let asyncfunction = null;
+    // ERROR: The async function is not getting called. Added a semicolon
+    asyncfunction = async () => {
+      await ClientUtils.enrollClientForOrg(orgname, client);
+      await ClientUtils.createChannelForOrg(client);
+      await ClientUtils.joinChannel(orgname, peername, client);
+    };
+    // ERROR: to make the function call, had to call the clientpromise()
+    const clientpromise = asyncfunction();
+    // ERROR:[Orderer.js]: sendDeliver - rejecting - status:NOT_FOUND
+    // (node:32366) UnhandledPromiseRejectionWarning: Error: Invalid results returned ::NOT_FOUND
+    /*
+    catch (err) {
+      Constants.logger.info('****************** INSIDE ORG1 ADD CATCH ************************');
+      Constants.logger.info(client);
+      Constants.logger.info(err);
+      Constants.logger.info(clientpromise);
+    }
+    */
+ 
+    /* 
     orgname = Constants.ORG2;
     peername = Constants.peer0org2;
-    client = enrollClientForOrg(orgname, client);
-    client = createChannelForOrg(client);
-    client = ClientHelper.joinChannel(orgname, peername, client);
+    client = ClientUtils.enrollClientForOrg(orgname, client);
+    client = ClientUtils.createChannelForOrg(client);
+    client = ClientUtils.joinChannel(orgname, peername, client);
     
     orgname = Constants.ORG3;
     peername = Constants.peer0org3;
-    client = enrollClientForOrg(orgname, client);
-    client = createChannelForOrg(client);
-    client = ClientHelper.joinChannel(orgname, peername, client);
-    
+    client = ClientUtils.enrollClientForOrg(orgname, client);
+    client = ClientUtils.createChannelForOrg(client);
+    client = ClientUtils.joinChannel(orgname, peername, client);
+    */
     res.redirect('/transact');
   });
   // return the const express.Router()

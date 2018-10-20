@@ -4,17 +4,24 @@ const Constants = require('../constants.js');
 const ClientHelper = require('./helper.js');
 
 function getClientForOrg() {
+  // ERROR: Error: Invalid network configuration due to "version" is missing
+  // changed connectionprofile file to version: "1.1" 
+  // restarting the ledger with the same genesis and channel tx files
+  // ERROR: Had missed the function ()
   Constants.logger.info('****************** getClientForOrg - INSIDE FUNCTTION ************************');
-  const client = Constants.hfc.loadFromConfig(ClientHelper.getClientConnectionFilePath);
+  const client = Constants.hfc.loadFromConfig(ClientHelper.getClientConnectionFilePath());
   Constants.logger.info('****************** client after loadfromconfig START ************************');
-  Constants.info(client); // Does not type case and shows it fully
-  Constants.info('****************** client after loadfromconfig END ************************');
+  Constants.logger.info(client); // Does not type cast and shows it fully
+  Constants.logger.info('****************** client after loadfromconfig END ************************');
   return client;
 }
 module.exports.getClientForOrg = getClientForOrg;
 
 function getTransactionId(client) {
-  const txId = client.newTransactionID(true);
+  // ERROR: Removed true passed as an argument
+  // UnhandledPromiseRejectionWarning: TypeError: client.newTransactionID is not a function
+  Constants.logger.info('****************** getTransactionId - INSIDE FUNCTTION ************************');
+  const txId = client.newTransactionID();
   return txId;
 }
 module.exports.getTransactionId = getTransactionId;
@@ -30,19 +37,22 @@ async function enrollClientForOrg(orgname, client) {
   const username = ClientHelper.getUserName();
   // TODO: store in a variable here if used multiple times
   // ClientHelper.getMSPofOrg(orgname);
-
-  await client.initCredentialStores();
+  
+  // Error: No credentialStore settings found - adding the client: section in the connprofile.yaml
+  let promiseCredentialStore = await client.initCredentialStores();
   Constants.logger.info('****************** initCredentialStores ::: SUCCESS ************************');
-  Constants.logger.info(client);
+  Constants.logger.info(promiseCredentialStore);
   Constants.logger.info('****************** printed client after calling initCredentialStores ************************');
-
   const user = await client.getUserContext(username, true);
+  let createduserpromise = null;
   if (!user) {
     // throw new Error('user was not found :', username);
     // create a user context
     Constants.logger.info('****************** getUserContext had no user ADMIN ************************');
-    
-    createduser = await client.createUser({
+    // ERROR: UnhandledPromiseRejectionWarning: TypeError: Cannot read property 'toString' of null
+    // Clicking on the link - takes you to signedCertPEM 
+    // Fails here - Give full path to the file path not relative and check
+    createduserpromise = await client.createUser({
       username: username, // 'admin'
       mspid: ClientHelper.getMSPofOrg(orgname), // 'Org1MSP',
       cryptoContent: {
@@ -54,7 +64,8 @@ async function enrollClientForOrg(orgname, client) {
     });
     Constants.logger.info('****************** Created user::SUCCESS ************************');
     Constants.logger.info(orgname);
-    Constants.logger.info(createduser);
+    Constants.logger.info(createduserpromise);
+    Constants.logger.info(client.getUserContext(username, true));
     Constants.logger.info('****************** Created user::printed created user above for org 0 ************************');
   } else { // created user
     Constants.logger.info(orgname);
@@ -72,7 +83,9 @@ async function enrollClientForOrg(orgname, client) {
      Constants.logger.info('****************** GETCERTAUTHORITY - getting the enrolled admin::client.getCertificateAuthority::printed ************************');
      Comment END:
   */
-  const userPersisted = await client.setUserContext(createduser, true);
+  // ERROR:  UnhandledPromiseRejectionWarning: Error: Cannot save null userContext
+  // Had not replaced the variable  createduser to createduserpromise and the scope was inside the 'if'
+  const userPersisted = await client.setUserContext(createduserpromise, true);
   Constants.logger.info('****************** USER PERSISTED::client.setUserContext::SUCCESS ************************');
   Constants.logger.info(userPersisted);
   Constants.logger.info('****************** USER PERSISTED::client.setUserContext::printed user persisted ************************');
@@ -81,10 +94,11 @@ async function enrollClientForOrg(orgname, client) {
     Constants.logger.info(userPersisted.isEnrolled());
     Constants.logger.info('****************** client.setUserContext returned TRUE. USER persisted ************************');  
   } else {
-    client = null;
+    // ERROR: eslint error. No param reassign - hence commenting it out
+    // client = null;
     Constants.logger.info('****************** client.setUserContext returned FALSE. USER not persisted ************************');  
   }
-  return client;
+  // ERROR: Removed the return client; - makes not sense here
 }
 module.exports.enrollClientForOrg = enrollClientForOrg;
 
@@ -139,7 +153,7 @@ async function createChannelForOrg(client) {
     }// create channel failed
   } // if channel does not exist create a channel
   // exists because we created it now - or it already exists
-  return client;
+  // return client;
 }
 module.exports.createChannelForOrg = createChannelForOrg;
 
@@ -149,14 +163,14 @@ async function joinChannel(orgname, peername, client) {
   const channelName = ClientHelper.getChannelNameFromConfig();
   const channel = client.getChannel(channelName); // 'mychannel'
   Constants.logger.info('****************** GETCHANNEL - DONE ************************');
-  Constants.info(channel);
+  Constants.logger.info(channel);
   Constants.logger.info('****************** GETCHANNEL - printed getChannel result ************************');
 
   // Add peer
   try {
     // get peer from channel
     const channelPeer = channel.getPeer(Constants.peer0org1);
-    Constants.info('****************** channel.getPeer:: SUCCESS ************************');
+    Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
     Constants.logger.info(channelPeer);
     Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
   } catch (err) {
@@ -215,6 +229,6 @@ async function joinChannel(orgname, peername, client) {
   console.log(proposalResponse);
   Constants.logger.info('****************** JOINCHANNEL:: printed proposal response ************************');
   Constants.logger.info('****************** JOINCHANNEL:: SUCCESS ************************');
-  return client;
+  // return client;
 }
 module.exports.joinChannel = joinChannel;

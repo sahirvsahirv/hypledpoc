@@ -9,8 +9,8 @@
    "cryptoContent": [
        {    
             "orgName": "Org1MSP",
-            "privateKey": "../../crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk",
-            "signedCert": "../../crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem"
+            "privateKey": "/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/keystore/bdbfaa9c1b7faee6bb2cb42f699221bc6b9aabc286e43d735747e4805d98c799_sk",
+            "signedCert": "/home/hypledvm/go/src/utilitypoc/network/acmedevmode/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp/signcerts/peer0.org1.acme.com-cert.pem"
        },
        {    
             "orgName": "Org1MSP",
