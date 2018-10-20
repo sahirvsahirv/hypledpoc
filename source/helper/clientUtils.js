@@ -21,7 +21,10 @@ function getTransactionId(client) {
   // ERROR: Removed true passed as an argument
   // UnhandledPromiseRejectionWarning: TypeError: client.newTransactionID is not a function
   Constants.logger.info('****************** getTransactionId - INSIDE FUNCTTION ************************');
-  const txId = client.newTransactionID();
+  // TODO: Default is not admin based on the userContext. Passing true is admin
+  // Passing true for admin
+  // TODO: check client usercontext is admin, then pass true and add an else
+  const txId = client.newTransactionID(true);
   return txId;
 }
 module.exports.getTransactionId = getTransactionId;
@@ -134,41 +137,88 @@ async function createChannelForOrg(client) {
   let createChannelRequest = null;
   createChannelRequest = {
     name: channelName, // 'mychannel',
-    orderer: Constants.orderername, // 'orderer.acme.com',
-    signatures: signaturesallorgs, // [signature],
+    // orderer is not there in balance-transfer example
+    // orderer: Constants.orderername, // 'orderer.acme.com',
+    signatures: [signature], // signaturesallorgs
     config: channelConfig,
     txId: createChannelTxId
   };
-  const channel = client.getChannel(channelName);
   // ERROR: Remove the if condition - having the channel object loaded is no guarantee for
   // the channel to have been created
-  // if (!channel) {
-  // TODO: how do you verify channel has been created?
-  // create a channel
-  // TO create the channel - the network should be running
-  const response = await client.createChannel(createChannelRequest);
-  if (response) {
-    Constants.logger.info('****************** CREATECHANNEL - DONE ************************');
-    Constants.logger.info(response);
-    Constants.logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
-  } else {
-    Constants.logger.info('****************** CREATECHANNEL - FAILED ************************');
-  }// create channel failed
-  // } // if channel does not exist create a channel
-  // exists because we created it now - or it already exists
+  try {
+    const channel = client.getChannel(channelName, true);
+    Constants.logger.info('****************** GETCHANNEL - CALLED ************************');
+    Constants.logger.info(channel);
+    Constants.logger.info('****************** GETCHANNEL - PRINTED CHANNEL ************************');
+    // ERROR: No error - getting the channel even if the blockchain is stopped and restarted. 
+    // The genesis block is not deleted
+    // docker logs orderer.acme.com
+    /*
+    2018-10-20 18:32:59.945 UTC [fsblkstorage] nextBlockBytesAndPlacementInfo -> DEBU 0c5 blockbytes [11622] read from file [0]
+    2018-10-20 18:32:59.945 UTC [orderer/commmon/multichannel] NewRegistrar -> INFO 0c6 Starting system channel 'testchainid' with genesis block hash fee2e849b763c082ce1f2b870b5a92f7bb37411e54e77a15f36199ffb582c0c0 and orderer type solo
+    2018-10-20 18:32:59.945 UTC [orderer/common/server] Start -> INFO 0c7 Starting orderer:
+    Version: 1.1.0
+    Go version: go1.9.2
+    OS/Arch: linux/amd64
+    Experimental features: false
+    2018-10-20 18:32:59.945 UTC [orderer/common/server] Start -> INFO 0c8 Beginning to serve requests
+    */
+  } catch (err) {
+    // TODO: This API does not work (true) option - handle it another way and proceed
+    // TODO: how do you verify channel has been created?
+    // create a channel
+    // TO create the channel - the network should be running
+    Constants.logger.info('****************** GETCHANNEL - CATCH ************************');
+    const response = await client.createChannel(createChannelRequest);
+    Constants.logger.info('****************** CREATECHANNEL - CALLED ************************');
+    Constants.logger.info(response.status);
+    Constants.logger.info(response.message);
+    if (response && response.status === 'SUCCESS') {
+      Constants.logger.info('****************** CREATECHANNEL - DONE ************************');
+      Constants.logger.info(response);
+      Constants.logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
+    } else {
+      Constants.logger.info('****************** CREATECHANNEL - FAILED ************************');
+    }// create channel failed
+
+    // try catch channel does not exist create a channel
+    // exists because we created it now - or it already exists
+    // Constants.logger.info('****************** CREATECHANNEL - CATCH ************************');
+    // Constants.logger.info(err);
+    // Constants.logger.info('****************** CREATECHANNEL - CATCH DONE ************************');
+  }
   // return client;
+
+
+  // ORDERER LOGS docker logs
+  // 2018-10-20 17:37:29.544 UTC [fsblkstorage] updateCheckpoint -> DEBU 3ba Broadcasting about update checkpointInfo: latestFileChunkSuffixNum=[0], latestFileChunksize=[28923], isChainEmpty=[false], lastBlockNumber=[1]
+  // 2018-10-20 17:37:29.544 UTC [orderer/commmon/multichannel] commitBlock -> DEBU 3bb [channel: testchainid] Wrote block 1
+
+  // PEER LOGS 
+  // deployed all system chaincodes
+  // 2018-10-20 17:35:56.257 UTC [nodeCmd] func7 -> INFO 1b9 Starting profiling server with listenAddress = 0.0.0.0:6060
+
+  // Get genesisblock fails - no channel
+  // create channel using command line
+  // 2018-10-20 18:50:05.902 UTC [fsblkstorage] updateCheckpoint -> DEBU 418 Broadcasting about update checkpointInfo: latestFileChunkSuffixNum=[0], latestFileChunksize=[28846], isChainEmpty=[false], lastBlockNumber=[1]
+  // 2018-10-20 18:50:05.902 UTC [orderer/commmon/multichannel] commitBlock -> DEBU 419 [channel: testchainid] Wrote block 1
+  // peer channel list still empty
+  // getgenesisblock succeeds
+  // peer channel list on cli still does not return anything since peer has not been joined to the channel
+
+  // stop the ledger and restart it and see if genesisBlock succeeds
 }
 module.exports.createChannelForOrg = createChannelForOrg;
 
 async function joinChannel(orgname, peername, client) {
-  Constants.logger.info('****************** createChannelForOrg - INSIDE FUNCTTION ************************');
+  Constants.logger.info('****************** JOIN CHANNEL - INSIDE FUNCTTION ************************');
   
   const channelName = ClientHelper.getChannelNameFromConfig();
   const channel = client.getChannel(channelName); // 'mychannel'
   Constants.logger.info('****************** GETCHANNEL - DONE ************************');
   Constants.logger.info(channel);
   Constants.logger.info('****************** GETCHANNEL - printed getChannel result ************************');
-
+  /*
   // Add peer
   try {
     // get peer from channel
@@ -193,18 +243,22 @@ async function joinChannel(orgname, peername, client) {
     Constants.logger.info(channelPeer);
     Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
   } // Ctach if no peer is there
-  
+  */
   // Join channel
-  const genesisBlockTxid = client.newTransactionID();
+  // ERROR: Need to pass client to getTransactionId
+  const genesisBlockTxid = getTransactionId(client);
   const requestGenesisBlock = {
-    txId: genesisBlockTxid,
+    txId: genesisBlockTxid
+    /*
     orderer: {
       url: 'grpcs://localhost:7050',
       opts: {
         'request-timeout': 60000
       }
     }
+    */
   };
+  /*
   // "orderer" request parameter is missing and there are no orderers defined on this channel in the network configuration
   // hence get the orderer object - too many parameters
   const ordererObj = client.getOrderer(Constants.orderername); // 'orderer.acme.com'
@@ -221,6 +275,7 @@ async function joinChannel(orgname, peername, client) {
     Constants.logger.info(ordererObj);
     Constants.logger.info('****************** added orderer to channel:: getOrderer:: printed ordererObj ************************');
   }
+  */
   // removing the parameter since it is optional - requestGenesisBlock
   // UnhandledPromiseRejectionWarning: Error: "orderer" request parameter is not valid. Must be an orderer nameor "Orderer" object
   // error: [Orderer.js]: sendDeliver - rejecting - status:NOT_FOUND
@@ -236,9 +291,23 @@ async function joinChannel(orgname, peername, client) {
   // Created mychannel_newest.block
   // the authorization was the problem
   // TODO: Restart the network. Give orderer permissions and then use channel event hubs to join peers to the channel
-  const genesisBlock = await channel.getGenesisBlock(Constants.orderername);
+  // ERROR:
+  // Post the channel has been created and genesis block is a success. join channel need not be called again
+  // If called gives the following error
+  // [ { Error: 2 UNKNOWN: chaincode error (status: 500, message: Cannot create ledger from genesis block, due to LedgerID already exists)
+  //  at new createStatusError (/home/hypledvm/go/src/utilitypoc/network/acmedevmode/node_modules/grpc/src/client.js:64:15)
+  //  at /home/hypledvm/go/src/utilitypoc/network/acmedevmode/node_modules/grpc/src/client.js:583:15
+  //  code: 2,
+  //  metadata: Metadata { _internal_repr: {} },
+  //  details: 'chaincode error (status: 500, message: Cannot create ledger from genesis block, due to LedgerID already exists)' } ]
+
+  // ERROR: (node:27623) UnhandledPromiseRejectionWarning: Error: Peer with name "peer0.org1.acme.com" not assigned to this channel
+  // This error is a a result of CreateChannel Failure
+  Constants.logger.info('****************** GETGENSISBLOCK:: CALLING ************************');
+  const genesisBlock = await channel.getGenesisBlock(requestGenesisBlock);
   Constants.logger.info('****************** GETGENSISBLOCK:: SUCCESS ************************');
   Constants.logger.info(genesisBlock);
+  // .common.Block - is the block created
   Constants.logger.info('****************** GETGENSISBLOCK:: printed genesisBlock ************************');
   // Before adding the peers from different orgs initialize the peers from different orgs in the channel
   // we will take values from the connectionprofile.yaml
@@ -248,6 +317,8 @@ async function joinChannel(orgname, peername, client) {
     block: genesisBlock,
     txId: client.newTransactionID(true)
   };
+  // ERROR: (node:8787) UnhandledPromiseRejectionWarning: Error: Peer with name "peer0.org1.acme.com" not assigned to this channel
+  // Use channelEventHub
   const proposalResponse = await channel.joinChannel(joinChannelRequest, 10000); // 10 secs
   Constants.logger.info('****************** JOINCHANNEL:: CALLED ************************');
   if ((proposalResponse[0].code === 2) && (proposalResponse[0].message === 'Cannot create ledger from genesis block, due to LedgerID already exists')) {
