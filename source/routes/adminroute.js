@@ -3,7 +3,9 @@ const express = require('express');
 const chalk = require('chalk');
 const debug = require('debug');
 // const path = require('path');
-const fs = require('fs');
+// const fs = require('fs');
+const Constants = require('../constants.js');
+const ClientHelper = require('./helper.js');
 
 // require for superagent - approach 1
 // const nocache = require('superagent-no-cache');
@@ -72,9 +74,9 @@ function orgnameToMSPName(orgname) {
       break;
   }
   return MSPName;
-}
-// TODO: Change switch case to string split
-function upperCaseOrg(orgname) {
+}const fs = require('fs');
+/const fs = require('fs'); switch case to string split
+fconst fs = require('fs');aseOrg(orgname) {
   let upperOrg;
   switch (orgname) {
     case 'org1':
@@ -91,7 +93,7 @@ function upperCaseOrg(orgname) {
       break;
   }
   return upperOrg;
-}
+}const fs = require('fs');
 // CONSTANTS
 const usernameConfig = 'admins';
 const cryptoContent = 'cryptoContent';
@@ -120,7 +122,7 @@ async function CreateChannel(i) {
   // from the DEBUG watch
   // "adminpw" Client.getConfigSetting("admins")[0]["secret"]
   // Client.getConfigSetting("cryptoContent")[0]["orgName"]
-  const orgname = Client.getConfigSetting(cryptoContent)[i][orgNameConfigStr]; // 'org1';
+  const orgnameconst = Client.getConfigSetting(cryptoContent)[i][orgNameConfigStr]; // 'org1';
   logger.info(orgname);
   logger.info('****************** printed ORGNAME from config  ************************');
   // first read in the file, this gives us a binary config envelope
@@ -794,9 +796,26 @@ function adminrouter(navigate) {
     // now call nodejs functions to start BC
     // Register and enroll user
     logger.info('****************** INSIDE BUTTON CLICK ************************');
-    joinChannel(0);
-    joinChannel(1);
-    joinChannel(2);
+    let client = getClientForOrg();
+
+    let orgname = Constants.ORG1;
+    let peername = Constants.peer0org1;
+    client = enrollClientForOrg(orgname, client);
+    client = createChannelForOrg(client);
+    client = ClientHelper.joinChannel(orgname, peername, client);
+    
+    orgname = Constants.ORG2;
+    peername = Constants.peer0org2;
+    client = enrollClientForOrg(orgname, client);
+    client = createChannelForOrg(client);
+    client = ClientHelper.joinChannel(orgname, peername, client);
+    
+    orgname = Constants.ORG3;
+    peername = Constants.peer0org3;
+    client = enrollClientForOrg(orgname, client);
+    client = createChannelForOrg(client);
+    client = ClientHelper.joinChannel(orgname, peername, client);
+    
     res.redirect('/transact');
   });
   // return the const express.Router()
@@ -899,7 +918,8 @@ module.exports = adminrouter;
         
       }).catch((err) => { // error of fabriCAClient.enroll
         console.log('>>>>>>>> client.createUser failed' + err);
-      });// then ends here
+      });// then endsconst Constants = require('../constants.js');
+const ClientHelper = require('./helper.js'); here
     }
     console.log('>>>>>>>> user :::' + user);
   }, (err) => { // err of getUserContext
