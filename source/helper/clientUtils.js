@@ -161,7 +161,7 @@ async function joinChannel(orgname, peername, client) {
   Constants.logger.info('****************** createChannelForOrg - INSIDE FUNCTTION ************************');
   
   const channelName = ClientHelper.getChannelNameFromConfig();
-  const channel = client.getChannel(channelName); // 'mychannel'
+  const channel = "testchainid"; // client.getChannel(channelName); // 'mychannel'
   Constants.logger.info('****************** GETCHANNEL - DONE ************************');
   Constants.logger.info(channel);
   Constants.logger.info('****************** GETCHANNEL - printed getChannel result ************************');
@@ -193,23 +193,42 @@ async function joinChannel(orgname, peername, client) {
   // Join channel
   const genesisBlockTxid = client.newTransactionID();
   const requestGenesisBlock = {
-    txId: genesisBlockTxid
+    txId: genesisBlockTxid,
+    orderer: {
+      url: 'grpcs://localhost:7050',
+      opts: {
+        'request-timeout': 60000
+      }
+    }
   };
   // "orderer" request parameter is missing and there are no orderers defined on this channel in the network configuration
   // hence get the orderer object - too many parameters
   const ordererObj = client.getOrderer(Constants.orderername); // 'orderer.acme.com'
   // ERROR: [Channel.js]: Orderer orderer.acme.com already exists
-  if (channel.getOrderer(Constants.orderername)) {
+  if (Object.is(channel.getOrderer(Constants.orderername), null) === false) {
     // orderer already there - need not add
     Constants.logger.info('****************** Orderer already there:: channel.getOrderer ************************');
   } else {
+    // ERROR: error: [Orderer.js]: sendDeliver - rejecting - status:NOT_FOUND
+    // (node:300) UnhandledPromiseRejectionWarning: Error: Invalid results returned ::NOT_FOUND
+    // It comes here and exits. Need not come here. To the if statement - add != null since orderer is there
     channel.addOrderer(ordererObj, false); // false - so that no replacing is done if it exists
     Constants.logger.info('****************** added orderer to channel:: getOrderer ************************');
     Constants.logger.info(ordererObj);
     Constants.logger.info('****************** added orderer to channel:: getOrderer:: printed ordererObj ************************');
   }
+  // removing the parameter since it is optional - requestGenesisBlock
+  // UnhandledPromiseRejectionWarning: Error: "orderer" request parameter is not valid. Must be an orderer nameor "Orderer" object
+  // error: [Orderer.js]: sendDeliver - rejecting - status:NOT_FOUND
+  // (node:6928) UnhandledPromiseRejectionWarning: Error: Invalid results returned ::NOT_FOUND
+  // On peer: Broken pipe: peer channel fetch newest mychannel.block -c mychannel --orderer orderer.example.com:7050
+  // On orderer: orderer
+  // 2018-10-20 11:57:52.948 UTC [orderer/common/server] initializeServerConfig -> INFO 01e Starting orderer with TLS enabled
+  // 2018-10-20 11:57:52.949 UTC [orderer/common/server] initializeGrpcServer -> CRIT 01f Failed to listen: listen tcp 0.0.0.0:7050: bind: address already in use
+  // (node:8152) UnhandledPromiseRejectionWarning: Error: Failed to connect before the deadline
+  // Orderer logs: 2018-10-20 12:32:57.130 UTC [common/deliver] deliverBlocks -> DEBU 126fa Rejecting deliver for 172.21.0.4:44910 because channel mychannel not found
 
-  const genesisBlock = await channel.getGenesisBlock(requestGenesisBlock);
+  const genesisBlock = await channel.getGenesisBlock(Constants.orderername);
   Constants.logger.info('****************** GETGENSISBLOCK:: SUCCESS ************************');
   Constants.logger.info(genesisBlock);
   Constants.logger.info('****************** GETGENSISBLOCK:: printed genesisBlock ************************');

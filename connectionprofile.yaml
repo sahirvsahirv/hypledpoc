@@ -10,13 +10,14 @@ client:
   organization: Org1
 
   # set connection timeouts for the peer and orderer for the client
+  # removing timeout value : 3s to 3
   connection:
     timeout:
      peer:
       endorser: 3s
       eventHub: 3s
       eventReg: 3s
-     orderer: 3s
+     orderer: 30000
 
   # Needed to load users crypto keys and certs.
   cryptoconfig:
@@ -160,9 +161,9 @@ certificateAuthorities:
       path: crypto-config/peerOrganizations/org1.acme.com/ca/ca.org1.acme.com-cert.pem
       # Client key and cert for TLS mutual auth with Fabric CA. If the target Fabric CA server
       # does not have TLS mutual auth turned on, then this section is not needed
-      # client:
-        # keyfile: path/to/tls/fabricca/certs/client/client_fabric_client-key.pem
-        # certfile: path/to/tls/fabricca/certs/client/client_fabric_client.pem
+      client:
+        keyfile: path/to/tls/fabricca/certs/client/client_fabric_client-key.pem
+        certfile: path/to/tls/fabricca/certs/client/client_fabric_client.pem
     registrar:
       - enrollId: admin
         enrollSecret: adminpw

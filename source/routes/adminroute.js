@@ -768,6 +768,7 @@ function adminrouter(navigate) {
   // form(method='POST') - not giving an action here goes to the same page
   // the router here is home in adminRouter.route
   // if you give adminRouter.route('/admin') or anything else you get - cannot POST /admin error
+  // TODO: Is the CA section required? In the config
   adminRouter.route('/').post((req, res) => {
     // res.setHeader('content-type', 'text/plain');
     // res.end(`you have selected: ${req.body.values}`);
