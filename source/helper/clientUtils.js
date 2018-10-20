@@ -140,18 +140,21 @@ async function createChannelForOrg(client) {
     txId: createChannelTxId
   };
   const channel = client.getChannel(channelName);
-  if (!channel) {
-    // create a channel
-    // TO create the channel - the network should be running
-    const response = await client.createChannel(createChannelRequest);
-    if (response) {
-      Constants.logger.info('****************** CREATECHANNEL - DONE ************************');
-      Constants.logger.info(response);
-      Constants.logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
-    } else {
-      Constants.logger.info('****************** CREATECHANNEL - FAILED ************************');
-    }// create channel failed
-  } // if channel does not exist create a channel
+  // ERROR: Remove the if condition - having the channel object loaded is no guarantee for
+  // the channel to have been created
+  // if (!channel) {
+  // TODO: how do you verify channel has been created?
+  // create a channel
+  // TO create the channel - the network should be running
+  const response = await client.createChannel(createChannelRequest);
+  if (response) {
+    Constants.logger.info('****************** CREATECHANNEL - DONE ************************');
+    Constants.logger.info(response);
+    Constants.logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
+  } else {
+    Constants.logger.info('****************** CREATECHANNEL - FAILED ************************');
+  }// create channel failed
+  // } // if channel does not exist create a channel
   // exists because we created it now - or it already exists
   // return client;
 }
@@ -161,7 +164,7 @@ async function joinChannel(orgname, peername, client) {
   Constants.logger.info('****************** createChannelForOrg - INSIDE FUNCTTION ************************');
   
   const channelName = ClientHelper.getChannelNameFromConfig();
-  const channel = "testchainid"; // client.getChannel(channelName); // 'mychannel'
+  const channel = client.getChannel(channelName); // 'mychannel'
   Constants.logger.info('****************** GETCHANNEL - DONE ************************');
   Constants.logger.info(channel);
   Constants.logger.info('****************** GETCHANNEL - printed getChannel result ************************');
@@ -176,6 +179,7 @@ async function joinChannel(orgname, peername, client) {
   } catch (err) {
     // if peer is not in channel, add it
     // get from the client and add it to the channel
+     
     Constants.logger.info('****************** channel.getPeer:: FAILURE - getPeer from client and add it to the channel ************************');
     const peer1 = client.getPeer(peername);
     Constants.logger.info('****************** client.getPeer:: SUCCESS ************************');
@@ -227,7 +231,11 @@ async function joinChannel(orgname, peername, client) {
   // 2018-10-20 11:57:52.949 UTC [orderer/common/server] initializeGrpcServer -> CRIT 01f Failed to listen: listen tcp 0.0.0.0:7050: bind: address already in use
   // (node:8152) UnhandledPromiseRejectionWarning: Error: Failed to connect before the deadline
   // Orderer logs: 2018-10-20 12:32:57.130 UTC [common/deliver] deliverBlocks -> DEBU 126fa Rejecting deliver for 172.21.0.4:44910 because channel mychannel not found
-
+  // ERROR: Works on executing the following on the peer/cli
+  // peer channel fetch newest -c mychannel -o orderer.acme.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/acme.com/orderers/orderer.acme.com/msp/tlscacerts/tlsca.acme.com-cert.pem
+  // Created mychannel_newest.block
+  // the authorization was the problem
+  // TODO: Restart the network. Give orderer permissions and then use channel event hubs to join peers to the channel
   const genesisBlock = await channel.getGenesisBlock(Constants.orderername);
   Constants.logger.info('****************** GETGENSISBLOCK:: SUCCESS ************************');
   Constants.logger.info(genesisBlock);
