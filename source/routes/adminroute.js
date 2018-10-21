@@ -782,14 +782,14 @@ function adminrouter(navigate) {
     // at getTransactionId
     // The prmomise for 'enrollClientForOrg' is pending and 'createChannelForOrg' - promise is rejected
     // Try putting an await and an async to 'adminRouter' function
-    let orgname = Constants.ORG1;
-    let peername = Constants.peer0org1;
+    const orgname = Constants.ORG1;
+    const peername = Constants.peer0org1;
     let asyncfunction = null;
     // ERROR: The async function is not getting called. Added a semicolon
     asyncfunction = async () => {
       await ClientUtils.enrollClientForOrg(orgname, client);
       await ClientUtils.createChannelForOrg(client);
-      await ClientUtils.joinChannel('mychannel', [peername], 'admin', 'Org1');
+      await ClientUtils.joinChannel(client, peername, orgname);
     };
     // ERROR: to make the function call, had to call the clientpromise()
     const clientpromise = asyncfunction();

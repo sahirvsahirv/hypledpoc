@@ -327,166 +327,178 @@ async function joinChannel(orgname, peername, client) {
 /*
  * Have an organization join a channel
  */
-var joinChannel = async function (channel_name, peers, username, org_name) {
-  Constants.logger.info('\n\n============ Join Channel start ============\n');
-  
-  var error_message = null;
-  var all_eventhubs = [];
+async function joinChannel(client, peername, orgname) {
+  Constants.logger.info('****************** JOIN CHANNEL:: FUNCTION START ************************');
+  let errorMessage = null;
+  const allEventhubs = [];
+  let channel = null;
   try {
-    Constants.logger.info('Calling peers in organization "%s" to join the channel', org_name);
-
+    Constants.logger.info('Calling peers in organization "%s" to join the channel', orgname);
     // first setup the client for this org
-    var client = await getClientForOrg();
-    Constants.logger.info('Successfully got the fabric client for the organization "%s"', org_name);
-    var channel = client.getChannel(channel_name);
+    Constants.logger.info('Successfully got the fabric client for the organization "%s"', orgname);
+    channel = client.getChannel(ClientHelper.getChannelNameFromConfig());
     if (!channel) {
-      let message = util.format('Channel %s was not defined in the connection profile', channel_name);
+      const message = util.format('Channel %s was not defined in the connection profile', Constants.channelnamestr);
       Constants.logger.info(message);
       throw new Error(message);
     }
 
+    // Check if channel already has peers
+    // TODO: Extend to which peer of the organisation. Currently our org has only 1 peer
+    Constants.logger.info('****************** getChannelPeers:: CALLING ************************');
+    const channelPeerArr = channel.getChannelPeers();
+    Constants.logger.info(channelPeerArr);
+    Constants.logger.info('****************** getChannelPeers:: PRINTED CHANNELPEERS CONTINUE ************************');
+    channelPeerArr.forEach((channelPeer) => {
+      // TODO: Change it to a constant from the connprofile to match with the peername argument
+      if (channelPeer.peer.url === 'grpcs://localhost:7051') {
+        Constants.logger.info('Channel Peer exists. Need not join peer to the channel');
+        Constants.logger.info('****************** getChannelPeers:: NO PEERS RETURNING ************************');
+        return null;
+      }
+      Constants.logger.info('****************** getChannelPeers:: PEERS THERE CONTINUE ************************');
+    });
+    // If channel peer does not exists come here
+    // TODO: Put all the below code in the else of channelPeer does not exist
     // Add peer
-  try {
-    // get peer from channel
-    const channelPeer = channel.getPeer(Constants.peer0org1);
-    Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
-    Constants.logger.info(channelPeer);
-    Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
-  } catch (err) {
-    // if peer is not in channel, add it
-    // get from the client and add it to the channel
-     
-    Constants.logger.info('****************** channel.getPeer:: FAILURE - getPeer from client and add it to the channel ************************');
-    const peer1 = client.getPeer(peers[0]);
-    Constants.logger.info('****************** client.getPeer:: SUCCESS ************************');
-    Constants.logger.info(peer1);
-    Constants.logger.info('****************** client.getPeer:: printed  ************************');
-    // Add it to the channel
-    channel.addPeer(peer1, ClientHelper.getMSPofOrg(org_name), true, false); // last is replace, third is endorsing peer
-    Constants.logger.info('****************** channel.addPeer:: SUCCESS  ************************');
-    const channelPeer = channel.getPeer(peers[0]);
-    Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
-    Constants.logger.info(channelPeer);
-    Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
-  } // Ctach if no peer is there
-  
+    try {
+      // get peer from channel
+      const channelPeer = channel.getPeer(peername);
+      Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
+      Constants.logger.info(channelPeer);
+      Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
+    } catch (err) {
+      // if peer is not in channel, add it
+      // get from the client and add it to the channel
+      Constants.logger.info('****************** channel.getPeer:: FAILURE - getPeer from client and add it to the channel ************************');
+      const peer1 = client.getPeer(peername);
+      Constants.logger.info('****************** client.getPeer:: SUCCESS ************************');
+      Constants.logger.info(peer1);
+      Constants.logger.info('****************** client.getPeer:: printed  ************************');
+      // Add it to the channel
+      channel.addPeer(peer1, ClientHelper.getMSPofOrg(orgname), true, false); // last is replace, third is endorsing peer
+      Constants.logger.info('****************** channel.addPeer:: SUCCESS  ************************');
+      const channelPeer = channel.getPeer(peername);
+      Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
+      Constants.logger.info(channelPeer);
+      Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
+    } // Ctach if no peer is there
     // next step is to get the genesis_block from the orderer,
     // the starting point for the channel that we want to join
-    let request = {
-      txId: client.newTransactionID(true) //get an admin based transactionID
+    const request = {
+      txId: client.newTransactionID(true) // get an admin based transactionID
     };
-    let genesis_block = await channel.getGenesisBlock(request);
+    const genesisBlock = await channel.getGenesisBlock(request);
 
     // tell each peer to join and wait for the event hub of each peer to tell us
     // that the channel has been created on each peer
-    var promises = [];
-    var block_registration_numbers = [];
-    let event_hubs = client.getEventHubsForOrg(org_name);
-    event_hubs.forEach((eh) => {
-      let configBlockPromise = new Promise((resolve, reject) => {
-        let event_timeout = setTimeout(() => {
-          let message = 'REQUEST_TIMEOUT:' + eh._ep._endpoint.addr;
+    const promises = [];
+    const blockRegistrationNumbers = [];
+    const eventHubs = client.getEventHubsForOrg(orgname);
+    eventHubs.forEach((eh) => {
+      const configBlockPromise = new Promise((resolve, reject) => {
+        const eventTimeout = setTimeout(() => {
+          const message = 'REQUEST_TIMEOUT:' + eh._ep._endpoint.addr;
           Constants.logger.info(message);
           eh.disconnect();
           reject(new Error(message));
         }, 60000);
-        let block_registration_number = eh.registerBlockEvent((block) => {
-          clearTimeout(event_timeout);
+        const blockRegistrationNumber = eh.registerBlockEvent((block) => {
+          clearTimeout(eventTimeout);
           // a peer may have more than one channel so
           // we must check that this block came from the channel we
           // asked the peer to join
           if (block.data.data.length === 1) {
             // Config block must only contain one transaction
-            var channel_header = block.data.data[0].payload.header.channel_header;
-            if (channel_header.channel_id === channel_name) {
-              let message = util.format('EventHub % has reported a block update for channel %s', eh._ep._endpoint.addr, channel_name);
+            const channelHeader = block.data.data[0].payload.header.channel_header;
+            if (channelHeader.channel_id === Constants.channelnamestr) {
+              const message = util.format('EventHub % has reported a block update for channel %s', eh._ep._endpoint.addr, Constants.channelnamestr);
               Constants.logger.info(message);
               resolve(message);
             } else {
-              let message = util.format('Unknown channel block event received from %s', eh._ep._endpoint.addr);
+              const message = util.format('Unknown channel block event received from %s', eh._ep._endpoint.addr);
               Constants.logger.info(message);
               reject(new Error(message));
             }
           }
         }, (err) => {
-          clearTimeout(event_timeout);
-          let message = 'Problem setting up the event hub :' + err.toString();
+          clearTimeout(eventTimeout);
+          const message = 'Problem setting up the event hub :' + err.toString();
           Constants.logger.info(message);
           reject(new Error(message));
         });
         // save the registration handle so able to deregister
-        block_registration_numbers.push(block_registration_number);
-        all_eventhubs.push(eh); //save for later so that we can shut it down
+        blockRegistrationNumbers.push(blockRegistrationNumber);
+        allEventhubs.push(eh); // save for later so that we can shut it down
       });
       promises.push(configBlockPromise);
-      eh.connect(); //this opens the event stream that must be shutdown at some point with a disconnect()
+      eh.connect();
+      // this opens the event stream that must be shutdown at some point with a disconnect()
     });
 
-    let join_request = {
-      targets: peers, //using the peer names which only is allowed when a connection profile is loaded
-      txId: client.newTransactionID(true), //get an admin based transactionID
-      block: genesis_block
+    const joinRequest = {
+      targets: peername,
+      // using the peer names which only is allowed when a connection profile is loaded
+      txId: client.newTransactionID(true), // get an admin based transactionID
+      block: genesisBlock
     };
-    let join_promise = channel.joinChannel(join_request);
-    promises.push(join_promise);
-    let results = await Promise.all(promises);
+    const joinPromise = channel.joinChannel(joinRequest);
+    promises.push(joinPromise);
+    const results = await Promise.all(promises);
     Constants.logger.info(util.format('Join Channel R E S P O N S E : %j', results));
 
     // lets check the results of sending to the peers which is
     // last in the results array
-    let peers_results = results.pop();
+    const peersResults = results.pop();
     // then each peer results
-    for (let i in peers_results) {
-      let peer_result = peers_results[i];
-      if (peer_result.response && peer_result.response.status == 200) {
-        Constants.logger.info('Successfully joined peer to the channel %s', channel_name);
+    peersResults.forEach((peerResult) => {
+      if (peerResult.response && peerResult.response.status === 200) {
+        Constants.logger.info('Successfully joined peer to the channel %s', Constants.channelnamestr);
       } else {
-        let message = util.format('Failed to joined peer to the channel %s', channel_name);
-        error_message = message;
+        const message = util.format('Failed to joined peer to the channel %s', Constants.channelnamestr);
+        errorMessage = message;
         Constants.logger.info(message);
       }
-    }
+    }); // foreach
     // now see what each of the event hubs reported
-    for (let i in results) {
-      let event_hub_result = results[i];
-      let event_hub = event_hubs[i];
-      let block_registration_number = block_registration_numbers[i];
-      Constants.logger.info('Event results for event hub :%s', event_hub._ep._endpoint.addr);
-      if (typeof event_hub_result === 'string') {
-        Constants.logger.info(event_hub_result);
+    let i = 0;
+    results.forEach((eventHubResult) => {
+      const eventHub = eventHubs[i];
+      const blockRegistrationNumber = blockRegistrationNumbers[i];
+      Constants.logger.info('Event results for event hub :%s', eventHub._ep._endpoint.addr);
+      if (typeof eventHubResult === 'string') {
+        Constants.logger.info(eventHubResult);
       } else {
-        if (!error_message) error_message = event_hub_result.toString();
-        Constants.logger.info(event_hub_result.toString());
+        if (!errorMessage) errorMessage = eventHubResult.toString();
+        Constants.logger.info(eventHubResult.toString());
       }
-      event_hub.unregisterBlockEvent(block_registration_number);
-    }
+      eventHub.unregisterBlockEvent(blockRegistrationNumber);
+      i = i + 1;
+    });
   } catch (error) {
     Constants.logger.info('Failed to join channel due to error: ' + error.stack ? error.stack : error);
-    error_message = error.toString();
-  }
+    errorMessage = error.toString();
+  } // Try at the beginning of the function
 
   // need to shutdown open event streams
-  all_eventhubs.forEach((eh) => {
+  allEventhubs.forEach((eh) => {
     eh.disconnect();
   });
 
-  if (!error_message) {
-    let message = util.format(
+  if (!errorMessage) {
+    const messageResponse = util.format(
       'Successfully joined peers in organization %s to the channel:%s',
-      org_name, channel_name);
-      Constants.logger.info(message);
+      orgname, Constants.channelnamestr
+    );
+    Constants.logger.info(messageResponse);
     // build a response to send back to the REST caller
-    let response = {
+    const response = {
       success: true,
-      message: message
+      message: messageResponse
     };
     return response;
-  } else {
-    let message = util.format('Failed to join all peers to channel. cause:%s', error_message);
-    Constants.logger.info(message);
-    throw new Error(message);
   }
-};
+}
 module.exports.joinChannel = joinChannel;
 
 /*
