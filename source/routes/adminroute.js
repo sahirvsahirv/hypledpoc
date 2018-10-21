@@ -789,7 +789,7 @@ function adminrouter(navigate) {
     asyncfunction = async () => {
       await ClientUtils.enrollClientForOrg(orgname, client);
       await ClientUtils.createChannelForOrg(client);
-      await ClientUtils.joinChannel(orgname, peername, client);
+      await ClientUtils.joinChannel('mychannel', [peername], 'admin', 'Org1');
     };
     // ERROR: to make the function call, had to call the clientpromise()
     const clientpromise = asyncfunction();
