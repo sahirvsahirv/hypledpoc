@@ -110,25 +110,15 @@ async function enrollClientForOrg(orgname, client) {
   // Constants.logger.info('****************** fabCAClient.enroll printed admin ************************');
   Constants.logger.info('****************** fabCAClient.enroll SUCCESS ************************');
   // ERROR: (node:27192) UnhandledPromiseRejectionWarning: TypeError: enrolledAdmin.setEnrollment is not a function
-  const userContextPromiseRetrieve = await client.getUserContext(ClientHelper.getUserName(), true);
-  // user does not exist and state store has not been set
-  if (userContextPromise != null) {
-    Constants.logger.info('****************** getUserContext::NOT NULL returned - user exists in store ************************');
-    return null;
-  }
-  Constants.logger.info('****************** getUserContext had no user ADMIN - hence create by enrolling  ************************');
-  const adminSigningIdentity = await userContextPromiseRetrieve.setEnrollment(
-    key,
-    cert,
-    ClientHelper.getMSPofOrg(orgname),
-    true
-  );
-  Constants.logger.info('****************** setEnrollment CALLED  ************************');
-  Constants.logger.info(adminSigningIdentity);
-  Constants.logger.info('****************** setEnrollment printed promise  ************************');
   // TODO: change the kvs to a DB later
   // Persist it in the kvs
-  const userPersisted = await client.setUserContext(userContext, true);
+  const userPersisted = await client.setUserContext(
+    {
+      username: ClientHelper.getUserName(),
+      password: ClientHelper.getUserPassword()
+    },
+    true
+  );
   Constants.logger.info('****************** USER PERSISTED::client.setUserContext::SUCCESS ************************');
   Constants.logger.info(userPersisted);
   Constants.logger.info('****************** USER PERSISTED::client.setUserContext::printed user persisted ************************');
@@ -141,7 +131,16 @@ async function enrollClientForOrg(orgname, client) {
     // client = null;
     Constants.logger.info('****************** client.setUserContext returned FALSE. USER not persisted and not enrolled************************');
   }
-  return userPersisted;
+  const adminSigningIdentity = userPersisted.setEnrollment(
+    key,
+    cert,
+    ClientHelper.getMSPofOrg(orgname),
+    true
+  );
+  Constants.logger.info('****************** setEnrollment CALLED  ************************');
+  console.log(adminSigningIdentity);
+  Constants.logger.info('****************** setEnrollment printed promise  ************************');
+  
   // TODO: store in a variable here if used multiple times
   // ClientHelper.getMSPofOrg(orgname);
 
