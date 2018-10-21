@@ -46,6 +46,7 @@ module.exports.getTransactionId = getTransactionId;
 async function enrollClientForOrg(orgname, client) {
   // REFERENCE: https://hackernoon.com/setting-up-restful-api-server-for-hyperledger-fabric-with-nodejs-sdk-a4642edaf98e
   // NOT ENTIRELY CORRECT
+  // https://stackoverflow.com/questions/52927032/how-certificates-get-derived-from-the-real-fabric-ca-server-certificate-in-hfc-k/53002284#53002284
   // https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/java/org/hyperledger/fabric_ca/sdkintegration/HFCAClientIT.java
   Constants.logger.info('****************** enrollClientForOrg - INSIDE FUNCTTION ************************');
   Constants.logger.info(orgname);
@@ -71,14 +72,21 @@ async function enrollClientForOrg(orgname, client) {
   // TODO: User getUserContext for future requests from the keystore instead of enrolling
   // Enroll the user
   // TODO: Remove hardcoding of the strings
+  // Need not start separately - already there in the docker images.
+  // check is TLS is set - mutual TLS is set
+  // status on the ledger
+  // ca_peerOrg1            | 2018/10/21 14:49:14 [INFO] 172.19.0.1:55198 POST /api/v1/enroll 201 0 "OK"
+  // http://www.littlebigextra.com/how-to-enable-remote-rest-api-on-docker-host/
+  
+  // attr_reqs: [
+  //  { name: 'hf.Registrar.Roles' },
+  //  { name: 'hf.Registrar.Attributes' }
+  // ]
   const enrolledAdmin = await fabCAClient.enroll({
     // ERROR: [FabricCAClientImpl.js]: Invalid enroll request, missing enrollmentID 'ID" caps required
     enrollmentID: ClientHelper.getUserName(), // TODO: How do you avoid loading again and again
     enrollmentSecret: ClientHelper.getUserPassword(),
-    attr_reqs: [
-      { name: 'hf.Registrar.Roles' },
-      { name: 'hf.Registrar.Attributes' }
-    ]
+    profile: 'tls'
   });
   Constants.logger.info('****************** fabCAClient.enroll CALLED ************************');
   if (!enrolledAdmin) {
@@ -88,11 +96,36 @@ async function enrollClientForOrg(orgname, client) {
     throw Error('admin enrollment unsuccessful');
   }
   // TODO: CA server is not running what is it enrolling?
-  Constants.logger.info(enrolledAdmin.url);
-  Constants.logger.info('****************** fabCAClient.enroll printed admin ************************');
+  // Successfully called the Certificate Authority to get the TLS material
+  const key = enrolledAdmin.key.toBytes();
+  Constants.logger.info(key);
+  Constants.logger.info('******************  ENROLLMENT KEY PRINTED ************************');
+  const cert = enrolledAdmin.certificate;
+  Constants.logger.info(cert);
+  Constants.logger.info('******************  ENROLLMENT CERT PRINTED ************************');
+  // set the material on the client to be used when building endpoints for the user
+  client.setTlsClientCertAndKey(cert, key);
+  Constants.logger.info('******************  client.setTlsClientCertAndKey called ************************');
+  // console.log(enrolledAdmin);
+  // Constants.logger.info('****************** fabCAClient.enroll printed admin ************************');
   Constants.logger.info('****************** fabCAClient.enroll SUCCESS ************************');
   // ERROR: (node:27192) UnhandledPromiseRejectionWarning: TypeError: enrolledAdmin.setEnrollment is not a function
-  const userContext = await enrolledAdmin.setEnrollment();
+  const userContextPromiseRetrieve = await client.getUserContext(ClientHelper.getUserName(), true);
+  // user does not exist and state store has not been set
+  if (userContextPromise != null) {
+    Constants.logger.info('****************** getUserContext::NOT NULL returned - user exists in store ************************');
+    return null;
+  }
+  Constants.logger.info('****************** getUserContext had no user ADMIN - hence create by enrolling  ************************');
+  const adminSigningIdentity = await userContextPromiseRetrieve.setEnrollment(
+    key,
+    cert,
+    ClientHelper.getMSPofOrg(orgname),
+    true
+  );
+  Constants.logger.info('****************** setEnrollment CALLED  ************************');
+  Constants.logger.info(adminSigningIdentity);
+  Constants.logger.info('****************** setEnrollment printed promise  ************************');
   // TODO: change the kvs to a DB later
   // Persist it in the kvs
   const userPersisted = await client.setUserContext(userContext, true);
@@ -570,7 +603,39 @@ async function joinChannel(client, peername, orgname) {
 module.exports.joinChannel = joinChannel;
 
 /*
-// tell each peer to join and wait for the event hub of each peer to tell us
+// tell each peer to join and wait f{ key:
+   ECDSA_KEY {
+     _key:
+      { type: 'EC',
+        isPrivate: true,
+        isPublic: false,
+        getBigRandom: [Function],
+        setNamedCurve: [Function],
+        setPrivateKeyHex: [Function],
+        setPublicKeyHex: [Function],
+        getPublicKeyXYHex: [Function],
+        getShortNISTPCurveName: [Function],
+        generateKeyPairHex: [Function],
+        signWithMessageHash: [Function],
+        signHex: [Function],
+        sign: [Function],
+        verifyWithMessageHash: [Function],
+        verifyHex: [Function],
+        verify: [Function],
+        verifyRaw: [Function],
+        serializeSig: [Function],
+        parseSig: [Function],
+        parseSigCompact: [Function],
+        readPKCS5PrvKeyHex: [Function],
+        readPKCS8PrvKeyHex: [Function],
+        readPKCS8PubKeyHex: [Function],
+        readCertPubKeyHex: [Function],
+        curveName: 'secp256r1',
+        ecparams: [Object],
+        prvKeyHex: 'dbcae5e001c14599f151dedeadfbf6f60b419bab4052f56cb1c96c51a3c0e047',
+        pubKeyHex: '041a41c2f2e89b18c1364b447c8979cffcffc71bbafdd3a489aa800e9751f8fec33fbc7b206694ac4dce1a166c4fcfc9fc4f9cc02a134ff7191cc1d8102b6abad4' } },
+  certificate: '-----BEGIN CERTIFICATE-----\nMIICHTCCAcOgAwIBAgIUGQUN+4M9TlLQAsGZERzO2d7+mfYwCgYIKoZIzj0EAwIw\nbTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNh\nbiBGcmFuY2lzY28xFjAUBgNVBAoTDW9yZzEuYWNtZS5jb20xGTAXBgNVBAMTEGNh\nLm9yZzEuYWNtZS5jb20wHhcNMTgxMDIxMTU0ODAwWhcNMTkxMDIxMTU1MzAwWjAh\nMQ8wDQYDVQQLEwZjbGllbnQxDjAMBgNVBAMTBWFkbWluMFkwEwYHKoZIzj0CAQYI\nKoZIzj0DAQcDQgAEGkHC8uibGME2S0R8iXnP/P/HG7r906SJqoAOl1H4/sM/vHsg\nZpSsTc4aFmxPz8n8T5zAKhNP9xkcwdgQK2q61KOBjDCBiTAOBgNVHQ8BAf8EBAMC\nA6gwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAw\nHQYDVR0OBBYEFE+07h5AYtkgVHtNXBixeJGnEDymMCsGA1UdIwQkMCKAIKLJst5o\nEIgb9D9QJZqzEk22jVBznRY8oPmMvZi7ZRmDMAoGCCqGSM49BAMCA0gAMEUCIQDd\nLAq00atY0zQJUtIEp8rS6y5OlFiiXLkCzpkGlu3dBwIgblucxpbEaueMRiK5eWIc\n64YOZffDYr3RWoc1Qrw6yHs=\n-----END CERTIFICATE-----\n',
+  rootCertificate: '-----BEGIN CERTIFICATE-----\nMIICNzCCAd2gAwIBAgIQL+TRV62JPU53XvYTCU0ZWTAKBggqhkjOPQQDAjBtMQsw\nCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy\nYW5jaXNjbzEWMBQGA1UEChMNb3JnMS5hY21lLmNvbTEZMBcGA1UEAxMQY2Eub3Jn\nMS5hY21lLmNvbTAeFw0xODA5MDcwNzQ3MDRaFw0yODA5MDQwNzQ3MDRaMG0xCzAJ\nBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJh\nbmNpc2NvMRYwFAYDVQQKEw1vcmcxLmFjbWUuY29tMRkwFwYDVQQDExBjYS5vcmcx\nLmFjbWUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAES1FRQP2vcFVWdaCO\nluDq/qdMhc/voMyqFsImhxqSBGhsGBkiGpDyXWwqmWZefSL/Q0Y1h5AZlEfgJkJL\nalJBa6NfMF0wDgYDVR0PAQH/BAQDAgGmMA8GA1UdJQQIMAYGBFUdJQAwDwYDVR0T\nAQH/BAUwAwEB/zApBgNVHQ4EIgQgosmy3mgQiBv0P1AlmrMSTbaNUHOdFjyg+Yy9\nmLtlGYMwCgYIKoZIzj0EAwIDSAAwRQIhAK6CKyEMOVkT022/EsK9NmjmwRsdxKP/\n6BfpDpbrz427AiA+e7A9XwLrAnx6dZegosZS0D2iC1haM7kjVPszVy3frQ==\n-----END CERTIFICATE-----\n' }or the event hub of each peer to tell us
     // that the channel has been created on each peer
     // TODO:
     // Would need a join channel on each peer. And StartBC would get shaded on all other peers if
@@ -751,4 +816,123 @@ module.exports.joinChannel = joinChannel;
     Constants.logger.info(ordererObj);
     Constants.logger.info('****************** added orderer to channel:: getOrderer:: printed ordererObj ************************');
   }
+  */
+
+/*
+RESPONSE at the ledger till now
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] ca.Config: &{Version:1.3.0 Cfg:{Identities:{AllowRemove:false} Affiliations:{AllowRemove:false}} CA:{Name:ca-org1 Keyfile:/etc/hyperledger/fabric-ca-server-config/a2c9b2de6810881bf43f50259ab3124db68d50739d163ca0f98cbd98bb651983_sk Certfile:/etc/hyperledger/fabric-ca-server-config/ca.org1.acme.com-cert.pem Chainfile:/etc/hyperledger/fabric-ca-server/ca-chain.pem} Signing:0xc420182a70 CSR:{CN:ca.org1.acme.com Names:[{C:US ST:North Carolina L: O:Hyperledger OU:Fabric SerialNumber:}] Hosts:[761e859e9e77 localhost] KeyRequest:0xc4201604c0 CA:0xc420160540 SerialNumber:} Registry:{MaxEnrollments:-1 Identities:[{ Name:**** Pass:**** Type:client Affiliation: MaxEnrollments:0 Attrs:map[hf.Registrar.Roles:* hf.Registrar.DelegateRoles:* hf.Revoker:1 hf.IntermediateCA:1 hf.GenCRL:1 hf.Registrar.Attributes:* hf.AffiliationMgr:1]  }]} Affiliations:map[org1:[department1 department2] org2:[department1]] LDAP:{ Enabled:false URL:ldap://****:****@<host>:<port>/<base> UserFilter:(uid=%s) GroupFilter:(memberUid=%s) Attribute:{[uid member] [{ }] map[groups:[{ }]]} TLS:{false [] { }}  } DB:{ Type:sqlite3 Datasource:/etc/hyperledger/fabric-ca-server/fabric-ca-server.db TLS:{false [] { }}  } CSP:0xc420469c80 Client:<nil> Intermediate:{ParentServer:{ URL: CAName:  } TLS:{Enabled:false CertFiles:[] Client:{KeyFile: CertFile:}} Enrollment:{ Name: Secret:**** CAName: AttrReqs:[] Profile: Label: CSR:<nil> Type:x509  }} CRL:{Expiry:24h0m0s} Idemix:{IssuerPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerPublicKey IssuerSecretKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerSecretKey RevocationPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerRevocationPublicKey RevocationPrivateKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerRevocationPrivateKey RHPoolSize:1000 NonceExpiration:15s NonceSweepInterval:15m}}
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] DB: Login user admin with max enrollments of -1 and state of 0
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] DB: identity admin successfully logged in
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] Processing sign request: id=admin, CommonName=admin, Subject=<nil>
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] Request is not for a CA signing certificate
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] Checking CSR fields to make sure that they do not exceed maximum character limits
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] Finished processing sign request
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] Attribute extension being added to certificate is: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] Adding attribute extension to CSR: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:34:23 [INFO] signed certificate with serial number 639175166269639644107397196128961460288194136412
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] DB: Insert Certificate
+ ca_peerOrg1            | 2018/10/21 13:34:23 [DEBUG] Saved serial number as hex 6ff59b10d6f2ee525627df0b104acc6288f4c95c
+ ca_peerOrg1            | 2018/10/21 13:34:24 [DEBUG] saved certificate with serial number 639175166269639644107397196128961460288194136412
+ ca_peerOrg1            | 2018/10/21 13:34:24 [DEBUG] Successfully incremented state for identity admin to 1
+ ca_peerOrg1            | 2018/10/21 13:34:24 [INFO] 172.19.0.1:34558 POST /api/v1/enroll 201 0 "OK"
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Received request for /api/v1/enroll
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] ca.Config: &{Version:1.3.0 Cfg:{Identities:{AllowRemove:false} Affiliations:{AllowRemove:false}} CA:{Name:ca-org1 Keyfile:/etc/hyperledger/fabric-ca-server-config/a2c9b2de6810881bf43f50259ab3124db68d50739d163ca0f98cbd98bb651983_sk Certfile:/etc/hyperledger/fabric-ca-server-config/ca.org1.acme.com-cert.pem Chainfile:/etc/hyperledger/fabric-ca-server/ca-chain.pem} Signing:0xc420182a70 CSR:{CN:ca.org1.acme.com Names:[{C:US ST:North Carolina L: O:Hyperledger OU:Fabric SerialNumber:}] Hosts:[761e859e9e77 localhost] KeyRequest:0xc4201604c0 CA:0xc420160540 SerialNumber:} Registry:{MaxEnrollments:-1 Identities:[{ Name:**** Pass:**** Type:client Affiliation: MaxEnrollments:0 Attrs:map[hf.Registrar.Attributes:* hf.AffiliationMgr:1 hf.Registrar.Roles:* hf.Registrar.DelegateRoles:* hf.Revoker:1 hf.IntermediateCA:1 hf.GenCRL:1]  }]} Affiliations:map[org1:[department1 department2] org2:[department1]] LDAP:{ Enabled:false URL:ldap://****:****@<host>:<port>/<base> UserFilter:(uid=%s) GroupFilter:(memberUid=%s) Attribute:{[uid member] [{ }] map[groups:[{ }]]} TLS:{false [] { }}  } DB:{ Type:sqlite3 Datasource:/etc/hyperledger/fabric-ca-server/fabric-ca-server.db TLS:{false [] { }}  } CSP:0xc420469c80 Client:<nil> Intermediate:{ParentServer:{ URL: CAName:  } TLS:{Enabled:false CertFiles:[] Client:{KeyFile: CertFile:}} Enrollment:{ Name: Secret:**** CAName: AttrReqs:[] Profile: Label: CSR:<nil> Type:x509  }} CRL:{Expiry:24h0m0s} Idemix:{IssuerPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerPublicKey IssuerSecretKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerSecretKey RevocationPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerRevocationPublicKey RevocationPrivateKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerRevocationPrivateKey RHPoolSize:1000 NonceExpiration:15s NonceSweepInterval:15m}}
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] DB: Login user admin with max enrollments of -1 and state of 1
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] DB: identity admin successfully logged in
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Processing sign request: id=admin, CommonName=admin, Subject=<nil>
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Request is not for a CA signing certificate
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Checking CSR fields to make sure that they do not exceed maximum character limits
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Finished processing sign request
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Attribute extension being added to certificate is: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Adding attribute extension to CSR: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:38:36 [INFO] signed certificate with serial number 584447990567162144443277794142598426453856199515
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] DB: Insert Certificate
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] Saved serial number as hex 665f8de62720a221c9cf9b0945ff5b187103a35b
+ ca_peerOrg1            | 2018/10/21 13:38:36 [DEBUG] saved certificate with serial number 584447990567162144443277794142598426453856199515
+ ca_peerOrg1            | 2018/10/21 13:38:37 [DEBUG] Successfully incremented state for identity admin to 2
+ ca_peerOrg1            | 2018/10/21 13:38:37 [INFO] 172.19.0.1:34600 POST /api/v1/enroll 201 0 "OK"
+ ca_peerOrg1            | 2018/10/21 13:39:09 [DEBUG] Cleaning up expired nonces for CA 'ca-org1'
+ ca_peerOrg3            | 2018/10/21 13:39:10 [DEBUG] Cleaning up expired nonces for CA 'ca-org3'
+ ca_peerOrg2            | 2018/10/21 13:39:10 [DEBUG] Cleaning up expired nonces for CA 'ca-org2'
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Received request for /api/v1/enroll
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] ca.Config: &{Version:1.3.0 Cfg:{Identities:{AllowRemove:false} Affiliations:{AllowRemove:false}} CA:{Name:ca-org1 Keyfile:/etc/hyperledger/fabric-ca-server-config/a2c9b2de6810881bf43f50259ab3124db68d50739d163ca0f98cbd98bb651983_sk Certfile:/etc/hyperledger/fabric-ca-server-config/ca.org1.acme.com-cert.pem Chainfile:/etc/hyperledger/fabric-ca-server/ca-chain.pem} Signing:0xc420182a70 CSR:{CN:ca.org1.acme.com Names:[{C:US ST:North Carolina L: O:Hyperledger OU:Fabric SerialNumber:}] Hosts:[761e859e9e77 localhost] KeyRequest:0xc4201604c0 CA:0xc420160540 SerialNumber:} Registry:{MaxEnrollments:-1 Identities:[{ Name:**** Pass:**** Type:client Affiliation: MaxEnrollments:0 Attrs:map[hf.Registrar.Roles:* hf.Registrar.DelegateRoles:* hf.Revoker:1 hf.IntermediateCA:1 hf.GenCRL:1 hf.Registrar.Attributes:* hf.AffiliationMgr:1]  }]} Affiliations:map[org1:[department1 department2] org2:[department1]] LDAP:{ Enabled:false URL:ldap://****:****@<host>:<port>/<base> UserFilter:(uid=%s) GroupFilter:(memberUid=%s) Attribute:{[uid member] [{ }] map[groups:[{ }]]} TLS:{false [] { }}  } DB:{ Type:sqlite3 Datasource:/etc/hyperledger/fabric-ca-server/fabric-ca-server.db TLS:{false [] { }}  } CSP:0xc420469c80 Client:<nil> Intermediate:{ParentServer:{ URL: CAName:  } TLS:{Enabled:false CertFiles:[] Client:{KeyFile: CertFile:}} Enrollment:{ Name: Secret:**** CAName: AttrReqs:[] Profile: Label: CSR:<nil> Type:x509  }} CRL:{Expiry:24h0m0s} Idemix:{IssuerPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerPublicKey IssuerSecretKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerSecretKey RevocationPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerRevocationPublicKey RevocationPrivateKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerRevocationPrivateKey RHPoolSize:1000 NonceExpiration:15s NonceSweepInterval:15m}}
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] DB: Login user admin with max enrollments of -1 and state of 2
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] DB: identity admin successfully logged in
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Processing sign request: id=admin, CommonName=admin, Subject=<nil>
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Request is not for a CA signing certificate
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Checking CSR fields to make sure that they do not exceed maximum character limits
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Finished processing sign request
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Attribute extension being added to certificate is: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Adding attribute extension to CSR: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:43:18 [INFO] signed certificate with serial number 579078940875517441145496341340016171229436866444
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] DB: Insert Certificate
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Saved serial number as hex 656ecc3b32c47972a047004caf469723361a6f8c
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] saved certificate with serial number 579078940875517441145496341340016171229436866444
+ ca_peerOrg1            | 2018/10/21 13:43:18 [DEBUG] Successfully incremented state for identity admin to 3
+ ca_peerOrg1            | 2018/10/21 13:43:18 [INFO] 172.19.0.1:34646 POST /api/v1/enroll 201 0 "OK"
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Received request for /api/v1/enroll
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] ca.Config: &{Version:1.3.0 Cfg:{Identities:{AllowRemove:false} Affiliations:{AllowRemove:false}} CA:{Name:ca-org1 Keyfile:/etc/hyperledger/fabric-ca-server-config/a2c9b2de6810881bf43f50259ab3124db68d50739d163ca0f98cbd98bb651983_sk Certfile:/etc/hyperledger/fabric-ca-server-config/ca.org1.acme.com-cert.pem Chainfile:/etc/hyperledger/fabric-ca-server/ca-chain.pem} Signing:0xc420182a70 CSR:{CN:ca.org1.acme.com Names:[{C:US ST:North Carolina L: O:Hyperledger OU:Fabric SerialNumber:}] Hosts:[761e859e9e77 localhost] KeyRequest:0xc4201604c0 CA:0xc420160540 SerialNumber:} Registry:{MaxEnrollments:-1 Identities:[{ Name:**** Pass:**** Type:client Affiliation: MaxEnrollments:0 Attrs:map[hf.GenCRL:1 hf.Registrar.Attributes:* hf.AffiliationMgr:1 hf.Registrar.Roles:* hf.Registrar.DelegateRoles:* hf.Revoker:1 hf.IntermediateCA:1]  }]} Affiliations:map[org1:[department1 department2] org2:[department1]] LDAP:{ Enabled:false URL:ldap://****:****@<host>:<port>/<base> UserFilter:(uid=%s) GroupFilter:(memberUid=%s) Attribute:{[uid member] [{ }] map[groups:[{ }]]} TLS:{false [] { }}  } DB:{ Type:sqlite3 Datasource:/etc/hyperledger/fabric-ca-server/fabric-ca-server.db TLS:{false [] { }}  } CSP:0xc420469c80 Client:<nil> Intermediate:{ParentServer:{ URL: CAName:  } TLS:{Enabled:false CertFiles:[] Client:{KeyFile: CertFile:}} Enrollment:{ Name: Secret:**** CAName: AttrReqs:[] Profile: Label: CSR:<nil> Type:x509  }} CRL:{Expiry:24h0m0s} Idemix:{IssuerPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerPublicKey IssuerSecretKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerSecretKey RevocationPublicKeyfile:/etc/hyperledger/fabric-ca-server/IssuerRevocationPublicKey RevocationPrivateKeyfile:/etc/hyperledger/fabric-ca-server/msp/keystore/IssuerRevocationPrivateKey RHPoolSize:1000 NonceExpiration:15s NonceSweepInterval:15m}}
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] DB: Login user admin with max enrollments of -1 and state of 3
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] DB: identity admin successfully logged in
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Processing sign request: id=admin, CommonName=admin, Subject=<nil>
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Request is not for a CA signing certificate
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Checking CSR fields to make sure that they do not exceed maximum character limits
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Finished processing sign request
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] DB: Getting identity admin
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Attribute extension being added to certificate is: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Adding attribute extension to CSR: &{ID:[1 2 3 4 5 6 7 8 1] Critical:false Value:7b226174747273223a7b2268662e5265676973747261722e41747472696275746573223a222a222c2268662e5265676973747261722e526f6c6573223a222a227d7d}
+ ca_peerOrg1            | 2018/10/21 13:44:25 [INFO] signed certificate with serial number 337712626132840733037516515881823044175789504446
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] DB: Insert Certificate
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Saved serial number as hex 3b278ed28d20eec18c77c625371331326b6737be
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] saved certificate with serial number 337712626132840733037516515881823044175789504446
+ ca_peerOrg1            | 2018/10/21 13:44:25 [DEBUG] Successfully incremented state for identity admin to 4
+ ca_peerOrg1            | 2018/10/21 13:44:25 [INFO] 172.19.0.1:34682 POST /api/v1/enroll 201 0 "OK"
+*/ 
+
+/*
+enrollment response
+{ key:
+   ECDSA_KEY {
+     _key:
+      { type: 'EC',
+        isPrivate: true,
+        isPublic: false,
+        getBigRandom: [Function],
+        setNamedCurve: [Function],
+        setPrivateKeyHex: [Function],
+        setPublicKeyHex: [Function],
+        getPublicKeyXYHex: [Function],
+        getShortNISTPCurveName: [Function],
+        generateKeyPairHex: [Function],
+        signWithMessageHash: [Function],
+        signHex: [Function],
+        sign: [Function],
+        verifyWithMessageHash: [Function],
+        verifyHex: [Function],
+        verify: [Function],
+        verifyRaw: [Function],
+        serializeSig: [Function],
+        parseSig: [Function],
+        parseSigCompact: [Function],
+        readPKCS5PrvKeyHex: [Function],
+        readPKCS8PrvKeyHex: [Function],
+        readPKCS8PubKeyHex: [Function],
+        readCertPubKeyHex: [Function],
+        curveName: 'secp256r1',
+        ecparams: [Object],
+        prvKeyHex: 'dbcae5e001c14599f151dedeadfbf6f60b419bab4052f56cb1c96c51a3c0e047',
+        pubKeyHex: '041a41c2f2e89b18c1364b447c8979cffcffc71bbafdd3a489aa800e9751f8fec33fbc7b206694ac4dce1a166c4fcfc9fc4f9cc02a134ff7191cc1d8102b6abad4' } },
+  certificate: '-----BEGIN CERTIFICATE-----\nMIICHTCCAcOgAwIBAgIUGQUN+4M9TlLQAsGZERzO2d7+mfYwCgYIKoZIzj0EAwIw\nbTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNh\nbiBGcmFuY2lzY28xFjAUBgNVBAoTDW9yZzEuYWNtZS5jb20xGTAXBgNVBAMTEGNh\nLm9yZzEuYWNtZS5jb20wHhcNMTgxMDIxMTU0ODAwWhcNMTkxMDIxMTU1MzAwWjAh\nMQ8wDQYDVQQLEwZjbGllbnQxDjAMBgNVBAMTBWFkbWluMFkwEwYHKoZIzj0CAQYI\nKoZIzj0DAQcDQgAEGkHC8uibGME2S0R8iXnP/P/HG7r906SJqoAOl1H4/sM/vHsg\nZpSsTc4aFmxPz8n8T5zAKhNP9xkcwdgQK2q61KOBjDCBiTAOBgNVHQ8BAf8EBAMC\nA6gwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAw\nHQYDVR0OBBYEFE+07h5AYtkgVHtNXBixeJGnEDymMCsGA1UdIwQkMCKAIKLJst5o\nEIgb9D9QJZqzEk22jVBznRY8oPmMvZi7ZRmDMAoGCCqGSM49BAMCA0gAMEUCIQDd\nLAq00atY0zQJUtIEp8rS6y5OlFiiXLkCzpkGlu3dBwIgblucxpbEaueMRiK5eWIc\n64YOZffDYr3RWoc1Qrw6yHs=\n-----END CERTIFICATE-----\n',
+  rootCertificate: '-----BEGIN CERTIFICATE-----\nMIICNzCCAd2gAwIBAgIQL+TRV62JPU53XvYTCU0ZWTAKBggqhkjOPQQDAjBtMQsw\nCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy\nYW5jaXNjbzEWMBQGA1UEChMNb3JnMS5hY21lLmNvbTEZMBcGA1UEAxMQY2Eub3Jn\nMS5hY21lLmNvbTAeFw0xODA5MDcwNzQ3MDRaFw0yODA5MDQwNzQ3MDRaMG0xCzAJ\nBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJh\nbmNpc2NvMRYwFAYDVQQKEw1vcmcxLmFjbWUuY29tMRkwFwYDVQQDExBjYS5vcmcx\nLmFjbWUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAES1FRQP2vcFVWdaCO\nluDq/qdMhc/voMyqFsImhxqSBGhsGBkiGpDyXWwqmWZefSL/Q0Y1h5AZlEfgJkJL\nalJBa6NfMF0wDgYDVR0PAQH/BAQDAgGmMA8GA1UdJQQIMAYGBFUdJQAwDwYDVR0T\nAQH/BAUwAwEB/zApBgNVHQ4EIgQgosmy3mgQiBv0P1AlmrMSTbaNUHOdFjyg+Yy9\nmLtlGYMwCgYIKoZIzj0EAwIDSAAwRQIhAK6CKyEMOVkT022/EsK9NmjmwRsdxKP/\n6BfpDpbrz427AiA+e7A9XwLrAnx6dZegosZS0D2iC1haM7kjVPszVy3frQ==\n-----END CERTIFICATE-----\n' }
   */
