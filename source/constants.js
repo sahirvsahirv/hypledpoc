@@ -23,13 +23,14 @@ const ordererName = 'orderer.acme.com';
 const peer0Org1 = 'peer0.org1.acme.com';
 const peer0Org2 = 'peer0.org2.acme.com';
 const peer0Org3 = 'peer0.org3.acme.com';
-
+const secretPasswordStr = 'secret';
 module.exports = {
   logger: appLogger,
   hfc: Client,
   orgnameconfig: orgNameConfigStr,
   usernameconfig: userNameConfigStr,
   username: usernameConfig,
+  secret: secretPasswordStr,
   cryptocontentconfig: cryptoContentConfigStr,
   ORG1: org1,
   ORG2: org2,

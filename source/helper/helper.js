@@ -15,6 +15,17 @@ function getUserName() {
 }
 module.exports.getUserName = getUserName;
 
+function getUserPassword() {
+  // TODO: Move 0. 
+  // Ok as of now since it is always going to be admin and 0 and also will move to Keyvalue store later
+  // ERROR: the constants passed were messed up
+  const secret = Constants.hfc.getConfigSetting(Constants.username)[0][Constants.secret]; // 'admin';
+  Constants.logger.info(secret);
+  Constants.logger.info('****************** printed secret from config  ************************');
+  return secret;
+}
+module.exports.getUserPassword = getUserPassword;
+
 // Store the MSP name in config.json 'Org1' needs to be passed as in connectionprofile.yaml under Organisations
 function getMSPofOrg(orgname) {
   // TODO: Later take i from the substr
@@ -42,13 +53,6 @@ function getClientConnectionFilePath() {
   const connprofilepathstr = Constants.hfc.getConfigSetting(Constants.networkstr + Constants.configappendstr);
   Constants.logger.info(connprofilepathstr);
   Constants.logger.info('****************** printed the config file path ************************');
-  /*
-     Comment START: Required when key value store would be used
-     logger.info(Client.getConfigSetting(upperCaseOrg(orgname) + config));
-     logger.info('****************** printed the orgname config file path ************************');
-     client.loadFromConfig(Client.getConfigSetting(upperCaseOrg(orgname) + config));
-     Comment END: Required when key value store would be used
-  */
   // ERROR: No return statement was there
   return connprofilepathstr;
 }

@@ -4,42 +4,42 @@ version: "1.0"
 #
 # The client section is SDK-specific. The sample below is for the node.js SDK
 #
-client:
+#client:
   # Which organization does this application instance belong to? The value must be the name of an org
   # defined under "organizations"
-  organization: Org1
+ # organization: Org1
 
   # set connection timeouts for the peer and orderer for the client
   # removing timeout value : 3s to 3
-  connection:
-    timeout:
-     peer:
-      endorser: 3s
-      eventHub: 3s
-      eventReg: 3s
-     orderer: 30000
+  #connection:
+   # timeout:
+    # peer:
+     # endorser: 3s
+      #eventHub: 3s
+      #eventReg: 3s
+     #orderer: 30000
 
   # Needed to load users crypto keys and certs.
-  cryptoconfig:
-    path: ./crypto-config
+#  cryptoconfig:
+ #   path: ./crypto-config
 
   # Some SDKs support pluggable KV stores, the properties under "credentialStore" 
   # are implementation specific
-  credentialStore:
+  #credentialStore:
     # [Optional]. Specific to FileKeyValueStore.js or similar implementations in other SDKs. Can be others
     # if using an alternative impl. For instance, CouchDBKeyValueStore.js would require an object
     # here for properties like url, db name, etc.
-    path: "/tmp/hfc-kvs"
+   # path: "/tmp/hfc-kvs"
 
     # [Optional]. Specific to the CryptoSuite implementation. Software-based implementations like 
     # CryptoSuite_ECDSA_AES.js in node SDK requires a key store. PKCS#11 based implementations does 
     # not.
-    cryptoStore:
+    #cryptoStore:
       # Specific to the underlying KeyValueStore that backs the crypto key store. 
-      path: "/tmp/hfc-cvs"
+     # path: "/tmp/hfc-cvs"
 
     # [Optional]. Specific to Composer environment
-    wallet: wallet-name
+    #wallet: wallet-name
 
   # BCCSP config for the client.
   # BCCSP:
@@ -177,9 +177,9 @@ certificateAuthorities:
       path: crypto-config/peerOrganizations/org2.acme.com/ca/ca.org2.acme.com-cert.pem
       # Client key and cert for TLS mutual auth with Fabric CA. If the target Fabric CA server
       # does not have TLS mutual auth turned on, then this section is not needed
-      # client:
-        # keyfile: path/to/tls/fabricca/certs/client/client_fabric_client-key.pem
-        # certfile: path/to/tls/fabricca/certs/client/client_fabric_client.pem
+      client:
+        keyfile: path/to/tls/fabricca/certs/client/client_fabric_client-key.pem
+        certfile: path/to/tls/fabricca/certs/client/client_fabric_client.pem
     registrar:
       - enrollId: admin
         enrollSecret: adminpw
@@ -193,9 +193,9 @@ certificateAuthorities:
       path: crypto-config/peerOrganizations/org3.acme.com/ca/ca.org3.acme.com-cert.pem
       # Client key and cert for TLS mutual auth with Fabric CA. If the target Fabric CA server
       # does not have TLS mutual auth turned on, then this section is not needed
-      # client:
-        # keyfile: path/to/tls/fabricca/certs/client/client_fabric_client-key.pem
-        # certfile: path/to/tls/fabricca/certs/client/client_fabric_client.pem
+      client:
+        keyfile: path/to/tls/fabricca/certs/client/client_fabric_client-key.pem
+        certfile: path/to/tls/fabricca/certs/client/client_fabric_client.pem
     registrar:
       - enrollId: admin
         enrollSecret: adminpw

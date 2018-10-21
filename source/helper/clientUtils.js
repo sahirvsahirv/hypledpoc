@@ -1,10 +1,11 @@
 // ERROR: FS and util should be the first import
 const util = require('util');
 const fs = require('fs');
+// const fabricCAClient = require('fabric-ca-client');
 const Constants = require('../constants.js');
 const ClientHelper = require('./helper.js');
 
-function getClientForOrg() {
+async function getClientForOrg(orgname) {
   // ERROR: Error: Invalid network configuration due to "version" is missing
   // changed connectionprofile file to version: "1.1" 
   // restarting the ledger with the same genesis and channel tx files
@@ -12,7 +13,19 @@ function getClientForOrg() {
   Constants.logger.info('****************** getClientForOrg - INSIDE FUNCTTION ************************');
   const client = Constants.hfc.loadFromConfig(ClientHelper.getClientConnectionFilePath());
   Constants.logger.info('****************** client after loadfromconfig START ************************');
-  Constants.logger.info(client); // Does not type cast and shows it fully
+  // Comment START: Required when key value store would be used
+  Constants.logger.info('****************** getClientConnectionFilePath - OVER ************************');
+  // 'Org3-connection-profile-path'
+  const connprofilepathstr = Constants.hfc.getConfigSetting(orgname + Constants.configappendstr);
+  Constants.logger.info(Constants.hfc.getConfigSetting(connprofilepathstr));
+  Constants.logger.info('****************** printed the orgname config file path ************************');
+  // Note: Use the same client object and load again
+  // ERROR: This does not work
+  // Since the keystore is only provided in the config it will search from there
+  // We need to put something there. Take from the CA and store it there
+  client.loadFromConfig(connprofilepathstr);
+  // Comment END: Required when key value store would be used
+  Constants.logger.info(client.orgname); // Does not type cast and shows it fully
   Constants.logger.info('****************** client after loadfromconfig END ************************');
   return client;
 }
@@ -31,50 +44,104 @@ function getTransactionId(client) {
 module.exports.getTransactionId = getTransactionId;
 
 async function enrollClientForOrg(orgname, client) {
-  let createduser = null;
+  // REFERENCE: https://hackernoon.com/setting-up-restful-api-server-for-hyperledger-fabric-with-nodejs-sdk-a4642edaf98e
+  // NOT ENTIRELY CORRECT
+  // https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/java/org/hyperledger/fabric_ca/sdkintegration/HFCAClientIT.java
   Constants.logger.info('****************** enrollClientForOrg - INSIDE FUNCTTION ************************');
   Constants.logger.info(orgname);
   // await needs the function - CreateChannel to be an async function
   // manage return of a promise by making the calling function async
 
-  // TODO: How do you avoid loading again and again
-  const username = ClientHelper.getUserName();
-  // TODO: store in a variable here if used multiple times
-  // ClientHelper.getMSPofOrg(orgname);
-
-  // Error: No credentialStore settings found - adding the client: section in the connprofile.yaml
-  let promiseCredentialStore = await client.initCredentialStores();
+  const promiseCredentialStore = await client.initCredentialStores();
   Constants.logger.info('****************** initCredentialStores ::: SUCCESS ************************');
   Constants.logger.info(promiseCredentialStore);
   Constants.logger.info('****************** printed client after calling initCredentialStores ************************');
-  const user = await client.getUserContext(username, true);
-  let createduserpromise = null;
-  if (!user) {
-    // throw new Error('user was not found :', username);
-    // create a user context
-    Constants.logger.info('****************** getUserContext had no user ADMIN ************************');
-    // ERROR: UnhandledPromiseRejectionWarning: TypeError: Cannot read property 'toString' of null
-    // Clicking on the link - takes you to signedCertPEM 
-    // Fails here - Give full path to the file path not relative and check
-    createduserpromise = await client.createUser({
-      username: username, // 'admin'
-      mspid: ClientHelper.getMSPofOrg(orgname), // 'Org1MSP',
-      cryptoContent: {
-        privateKey: ClientHelper.getOrgPrivateKey(orgname),
-        signedCert: ClientHelper.getOrgSignedCert(orgname)
-      },
-      skipPersistence: true // skip persistence - to resolve the error
-      // Cannot save user to state store when stateStore is null
-    });
-    Constants.logger.info('****************** Created user::SUCCESS ************************');
-    Constants.logger.info(orgname);
-    Constants.logger.info(createduserpromise);
-    Constants.logger.info(client.getUserContext(username, true));
-    Constants.logger.info('****************** Created user::printed created user above for org 0 ************************');
-  } else { // created user
-    Constants.logger.info(orgname);
-    Constants.logger.info('****************** ADMIN USER ALREADY EXISTS ::SUCCESS ************************');
+  
+  const fabCAClient = client.getCertificateAuthority();
+  Constants.logger.info('****************** getCertificateAuthority ::: CALLED ************************');
+  Constants.logger.info(fabCAClient);
+  Constants.logger.info('****************** getCertificateAuthority ::: PRINTED CACLIENT instance ************************');
+  const userContextPromise = await client.getUserContext(ClientHelper.getUserName(), true);
+  // user does not exist and state store has not been set
+  if (userContextPromise != null) {
+    Constants.logger.info('****************** getUserContext::NOT NULL returned - user exists in store ************************');
+    return null;
   }
+  Constants.logger.info('****************** getUserContext had no user ADMIN - hence create by enrolling  ************************');
+  // TODO: User getUserContext for future requests from the keystore instead of enrolling
+  // Enroll the user
+  // TODO: Remove hardcoding of the strings
+  const enrolledAdmin = await fabCAClient.enroll({
+    // ERROR: [FabricCAClientImpl.js]: Invalid enroll request, missing enrollmentID 'ID" caps required
+    enrollmentID: ClientHelper.getUserName(), // TODO: How do you avoid loading again and again
+    enrollmentSecret: ClientHelper.getUserPassword(),
+    attr_reqs: [
+      { name: 'hf.Registrar.Roles' },
+      { name: 'hf.Registrar.Attributes' }
+    ]
+  });
+  Constants.logger.info('****************** fabCAClient.enroll CALLED ************************');
+  if (!enrolledAdmin) {
+    // TODO: There should be a try catch somewhere
+    // TODO: Remove hardcode message to constants
+    Constants.logger.info('****************** fabCAClient.enroll - UNSUCCESSFUL ************************');
+    throw Error('admin enrollment unsuccessful');
+  }
+  // TODO: CA server is not running what is it enrolling?
+  Constants.logger.info(enrolledAdmin.url);
+  Constants.logger.info('****************** fabCAClient.enroll printed admin ************************');
+  Constants.logger.info('****************** fabCAClient.enroll SUCCESS ************************');
+  // ERROR: (node:27192) UnhandledPromiseRejectionWarning: TypeError: enrolledAdmin.setEnrollment is not a function
+  const userContext = await enrolledAdmin.setEnrollment();
+  // TODO: change the kvs to a DB later
+  // Persist it in the kvs
+  const userPersisted = await client.setUserContext(userContext, true);
+  Constants.logger.info('****************** USER PERSISTED::client.setUserContext::SUCCESS ************************');
+  Constants.logger.info(userPersisted);
+  Constants.logger.info('****************** USER PERSISTED::client.setUserContext::printed user persisted ************************');
+  if ((userPersisted != null) && (userPersisted.isEnrolled())) {
+    Constants.logger.info(userPersisted);
+    Constants.logger.info(userPersisted.isEnrolled());
+    Constants.logger.info('****************** client.setUserContext returned TRUE. USER persisted ************************');
+  } else {
+    // ERROR: eslint error. No param reassign - hence commenting it out
+    // client = null;
+    Constants.logger.info('****************** client.setUserContext returned FALSE. USER not persisted and not enrolled************************');
+  }
+  return userPersisted;
+  // TODO: store in a variable here if used multiple times
+  // ClientHelper.getMSPofOrg(orgname);
+
+  // ERROR: No credentialStore settings found - adding the client: section in the connprofile.yaml
+  // ERROR: Need to change context of different clients. Hence loading org1, org2 etc
+  // and if not found in the key store get it from config and assign it to the client
+  /*
+  try {
+    const adminUserContext = await client.setUserContext(
+      {
+        username: username, // 'admin'
+        password: ClientHelper.getUserPassword() // 'adminpw'
+      }
+    );
+    Constants.logger.info('****************** setUserContext ::: CALLED ************************');
+    Constants.logger.info(adminUserContext);
+    Constants.logger.info('****************** setUserContext ::: PRINTED PROMISE ************************');
+  } catch (err) {
+    Constants.logger.info('****************** setUserContext ::: CATCH ************************');
+    Constants.logger.info(err.message);
+    Constants.logger.info('****************** setUserContext ::: PRINTED CATCH MESSAGE ************************');
+  }
+  */
+  
+  /* 
+  await fabricCaClient.register(
+    {
+      enrollmentID: ClientHelper.getUserName(), // 'user1', - for me still admin
+      affiliation: orgname// 'org1' // TODO: Check lowercase or 'Org1'
+    }, adminUserContext // from setUserContext
+  );
+  */
+  
   // now set the user context - post this is successful - persists user to the state store
   /*
      Comment START: Not required to get context since user already there
@@ -89,19 +156,7 @@ async function enrollClientForOrg(orgname, client) {
   */
   // ERROR:  UnhandledPromiseRejectionWarning: Error: Cannot save null userContext
   // Had not replaced the variable  createduser to createduserpromise and the scope was inside the 'if'
-  const userPersisted = await client.setUserContext(createduserpromise, true);
-  Constants.logger.info('****************** USER PERSISTED::client.setUserContext::SUCCESS ************************');
-  Constants.logger.info(userPersisted);
-  Constants.logger.info('****************** USER PERSISTED::client.setUserContext::printed user persisted ************************');
-  if ((userPersisted != null) && (userPersisted.isEnrolled())) {
-    Constants.logger.info(userPersisted);
-    Constants.logger.info(userPersisted.isEnrolled());
-    Constants.logger.info('****************** client.setUserContext returned TRUE. USER persisted ************************');
-  } else {
-    // ERROR: eslint error. No param reassign - hence commenting it out
-    // client = null;
-    Constants.logger.info('****************** client.setUserContext returned FALSE. USER not persisted ************************');
-  }
+  
   // ERROR: Removed the return client; - makes not sense here
 }
 module.exports.enrollClientForOrg = enrollClientForOrg;
@@ -125,12 +180,12 @@ async function createChannelForOrg(client) {
   const channelConfig = client.extractChannelConfig(envelope);
   const signature = client.signChannelConfig(channelConfig);
   const signaturesallorgs = [];
-  Constants.logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 0- DONE ************************');
+  Constants.logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG- DONE ************************');
   Constants.logger.info(channelConfig);
   Constants.logger.info(signature);
-  Constants.logger.info('****************** pushing signature for org 0 - DONE ************************');
+  Constants.logger.info('****************** pushing signature for ORG - DONE ************************');
   signaturesallorgs.push(signature);
-  Constants.logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG 0 - DONE ************************');
+  Constants.logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG - DONE ************************');
 
   // channel is created by the orderer initially
   // each peer will join the channel by sending channel configuration to each of the peer nodes
@@ -328,6 +383,10 @@ async function joinChannel(orgname, peername, client) {
  * Have an organization join a channel
  */
 async function joinChannel(client, peername, orgname) {
+  // TODO: Test the whole code for a multi peer per org network and change the code to an array
+  // of peers at required places
+
+  // TODO: change channeleventhub to async await model instead of promise chain
   Constants.logger.info('****************** JOIN CHANNEL:: FUNCTION START ************************');
   let errorMessage = null;
   const allEventhubs = [];
@@ -347,17 +406,26 @@ async function joinChannel(client, peername, orgname) {
     // TODO: Extend to which peer of the organisation. Currently our org has only 1 peer
     Constants.logger.info('****************** getChannelPeers:: CALLING ************************');
     const channelPeerArr = channel.getChannelPeers();
-    Constants.logger.info(channelPeerArr);
+    Constants.logger.info(channelPeerArr.length);
     Constants.logger.info('****************** getChannelPeers:: PRINTED CHANNELPEERS CONTINUE ************************');
-    channelPeerArr.forEach((channelPeer) => {
-      // TODO: Change it to a constant from the connprofile to match with the peername argument
-      if (channelPeer.peer.url === 'grpcs://localhost:7051') {
-        Constants.logger.info('Channel Peer exists. Need not join peer to the channel');
-        Constants.logger.info('****************** getChannelPeers:: NO PEERS RETURNING ************************');
-        return null;
-      }
-      Constants.logger.info('****************** getChannelPeers:: PEERS THERE CONTINUE ************************');
-    });
+    // TODO: This API does not work. Hack since channel hass been created
+    /*
+    if (channelPeerArr.length == 0) {
+      Constants.logger.info('****************** HACK SINCE API NOT WORKING _ RETURNING SINCE PEER ALREADY JOINED THE CHANNEL ************************');
+      return null;
+    }
+    */
+    if (channelPeerArr.length > 0) {
+      channelPeerArr.forEach((channelPeer) => {
+        // TODO: Change it to a constant from the connprofile to match with the peername argument
+        if (channelPeer.peer.url === 'grpcs://localhost:7051') {
+          Constants.logger.info('Channel Peer exists. Need not join peer to the channel');
+          Constants.logger.info('****************** getChannelPeers:: NO PEERS RETURNING ************************');
+          return null;
+        }
+        Constants.logger.info('****************** getChannelPeers:: PEERS THERE CONTINUE ************************');
+      }); // for each
+    } // if there are channelPeers added to the channel need not fo and add more
     // If channel peer does not exists come here
     // TODO: Put all the below code in the else of channelPeer does not exist
     // Add peer

@@ -777,22 +777,35 @@ function adminrouter(navigate) {
     // now call nodejs functions to start BC
     // Register and enroll user
     Constants.logger.info('****************** INSIDE BUTTON CLICK ************************');
-    let client = ClientUtils.getClientForOrg();
     // ERROR: UnhandledPromiseRejectionWarning: TypeError: client.newTransactionID is not a function
     // at getTransactionId
     // The prmomise for 'enrollClientForOrg' is pending and 'createChannelForOrg' - promise is rejected
     // Try putting an await and an async to 'adminRouter' function
-    const orgname = Constants.ORG1;
-    const peername = Constants.peer0org1;
+    Constants.logger.info('****************** ORG1 PEERS START ************************');
+    let orgname = Constants.ORG1;
+    let peername = Constants.peer0org1;
     let asyncfunction = null;
     // ERROR: The async function is not getting called. Added a semicolon
     asyncfunction = async () => {
+      let client = await ClientUtils.getClientForOrg(orgname);
       await ClientUtils.enrollClientForOrg(orgname, client);
       await ClientUtils.createChannelForOrg(client);
       await ClientUtils.joinChannel(client, peername, orgname);
+      Constants.logger.info('****************** ORG2 PEERS START ************************');
+      orgname = Constants.ORG2;
+      peername = Constants.peer0org2;
+      // load it again for ORG2
+      client = await ClientUtils.getClientForOrg(orgname);
+      // ERROR: Client not taking ORG2 - filled up with ORG1 details
+      await ClientUtils.enrollClientForOrg(orgname, client);
+      await ClientUtils.createChannelForOrg(client);
+      await ClientUtils.joinChannel(client, peername, orgname);
+
+      Constants.logger.info('****************** ORG2 PEERS END ************************');
     };
     // ERROR: to make the function call, had to call the clientpromise()
-    const clientpromise = asyncfunction();
+    let clientpromise = asyncfunction();
+    Constants.logger.info('****************** ORG1 PEERS END ************************');
     // ERROR:[Orderer.js]: sendDeliver - rejecting - status:NOT_FOUND
     // (node:32366) UnhandledPromiseRejectionWarning: Error: Invalid results returned ::NOT_FOUND
     /*
@@ -803,14 +816,7 @@ function adminrouter(navigate) {
       Constants.logger.info(clientpromise);
     }
     */
- 
-    /* 
-    orgname = Constants.ORG2;
-    peername = Constants.peer0org2;
-    client = ClientUtils.enrollClientForOrg(orgname, client);
-    client = ClientUtils.createChannelForOrg(client);
-    client = ClientUtils.joinChannel(orgname, peername, client);
-    
+    /*
     orgname = Constants.ORG3;
     peername = Constants.peer0org3;
     client = ClientUtils.enrollClientForOrg(orgname, client);
