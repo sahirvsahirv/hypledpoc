@@ -17,7 +17,7 @@ async function getClientForOrg(orgname) {
   Constants.logger.info('****************** getClientConnectionFilePath - OVER ************************');
   // 'Org3-connection-profile-path'
   const connprofilepathstr = Constants.hfc.getConfigSetting(orgname + Constants.configappendstr);
-  Constants.logger.info(Constants.hfc.getConfigSetting(connprofilepathstr));
+  
   Constants.logger.info('****************** printed the orgname config file path ************************');
   // Note: Use the same client object and load again
   // NO ERROR: This does work
