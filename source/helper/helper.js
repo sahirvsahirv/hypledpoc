@@ -4,8 +4,24 @@
 // Path import should be the first import
 const Constants = require('../constants.js');
 
+function getCAName(orgname) {
+  let caname; // ca-org2
+  // TODO: change it to constants
+  if (orgname === Constants.ORG1) {
+    caname = 'ca-org1';
+  } else if (orgname === Constants.ORG2) {
+    caname = 'ca-org2';
+  } else if (orgname === Constants.ORG3) {
+    caname = 'ca-org3';
+  }
+  Constants.logger.info(caname);
+  Constants.logger.info('****************** printed userName from config  ************************');
+  return caname;
+}
+module.exports.getCAName = getCAName;
+
 function getUserName() {
-  // TODO: Move 0. 
+  // TODO: Move 0.
   // Ok as of now since it is always going to be admin and 0 and also will move to Keyvalue store later
   // ERROR: the constants passed were messed up
   const username = Constants.hfc.getConfigSetting(Constants.username)[0][Constants.usernameconfig]; // 'admin';

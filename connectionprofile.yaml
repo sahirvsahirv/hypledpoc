@@ -59,23 +59,23 @@ channels:
     mychannel:
         orderers:
             - orderer.acme.com
-    peers:       
-        peer0.org1.acme.com:
-            endorsingPeer: true
-            chaincodeQuery: true
-            ledgerQuery: true
-            eventSource: true
-            discover: true
-        peer0.org2.acme.com:
-            endorsingPeer: true
-            chaincodeQuery: false
-            ledgerQuery: true
-            eventSource: false
-        peer0.org3.acme.com:
-            endorsingPeer: true
-            chaincodeQuery: true
-            ledgerQuery: true
-            eventSource: true
+        peers:       
+            peer0.org1.acme.com:
+                endorsingPeer: true
+                chaincodeQuery: true
+                ledgerQuery: true
+                eventSource: true
+                discover: true
+            peer0.org2.acme.com:
+                endorsingPeer: true
+                chaincodeQuery: false
+                ledgerQuery: true
+                eventSource: false
+            peer0.org3.acme.com:
+                    endorsingPeer: true
+                    chaincodeQuery: true
+                    ledgerQuery: true
+                    eventSource: true
 # the below are for conveneience in the dev environment alone
 # sample config from from https://jira.hyperledger.org/browse/FABN-808
 organizations:
@@ -84,7 +84,7 @@ organizations:
         peers:
             - peer0.org1.example.com
         certificateAuthorities:
-         - ca-org1
+            - ca-org1
         adminPrivateKey:
             path: crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/msp/keystore/3c8b607419b6568cd64cda9e1c769789749c9caeadffebba8ca0c3bccff71171_sk
         signedCert:
@@ -95,22 +95,22 @@ organizations:
         peers:
             - peer0.org2.acme.com
         certificateAuthorities:
-         - ca-org1
+            - ca-org2
         adminPrivateKey:
             path: crypto-config/peerOrganizations/org2.acme.com/users/Admin@org2.acme.com/msp/keystore/084f486a2b14f26836d12f0a18d5111fcad11c943a9d111f7df1d903a1493e77_sk
         signedCert:
             path: crypto-config/peerOrganizations/org2.acme.com/users/Admin@org2.acme.com/msp/signcerts/Admin@org2.acme.com-cert.pem
 
     Org3:
-      mspid: Org3MSP
-      peers:
-        - peer0.org3.acme.com
-      certificateAuthorities:
-         - ca-org1
-      adminPrivateKey:
-        path: crypto-config/peerOrganizations/org3.acme.com/users/Admin@org3.acme.com/msp/keystore/7a606572b0ca8024ce04c65e10fda787a5470302382f9fb22cd3f9c2e54d01c4_sk
-      signedCert:
-        path: crypto-config/peerOrganizations/org3.acme.com/users/Admin@org3.acme.com/msp/signcerts/Admin@org3.acme.com-cert.pem
+        mspid: Org3MSP
+        peers:
+            - peer0.org3.acme.com
+        certificateAuthorities:
+            - ca-org3
+        adminPrivateKey:
+            path: crypto-config/peerOrganizations/org3.acme.com/users/Admin@org3.acme.com/msp/keystore/7a606572b0ca8024ce04c65e10fda787a5470302382f9fb22cd3f9c2e54d01c4_sk
+        signedCert:
+            path: crypto-config/peerOrganizations/org3.acme.com/users/Admin@org3.acme.com/msp/signcerts/Admin@org3.acme.com-cert.pem
 
 orderers:
     orderer.acme.com:
@@ -118,39 +118,43 @@ orderers:
         grpcOptions:
             ssl-target-name-override: orderer.acme.com
             # increasing 15 to 30000
-            grpc-max-send-message-length: 30000
+            grpc-max-send-message-length: 10000000
         #not a grpc options value
         tlsCACerts:
             #relative path without quotes - UnhandledPromiseRejectionWarning: Error: invalid grpc option value:tlsCACerts-> [object Object] expected string|integer
             path: crypto-config/ordererOrganizations/acme.com/orderers/orderer.acme.com/tls/ca.crt
 peers:
-        peer0.org1.acme.com:
-            url: grpcs://localhost:7051
-            eventUrl: grpcs://localhost:7053
-            grpcOptions:
-                ssl-target-name-override: peer0.org1.acme.com
-                grpc.keepalive_time_ms: 600000
-            tlsCACerts:
-                path: crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/tls/ca.crt
+    peer0.org1.acme.com:
+        url: grpcs://localhost:7051
+        eventUrl: grpcs://localhost:7053
+        grpcOptions:
+            ssl-target-name-override: peer0.org1.acme.com
+            grpc.keepalive_time_ms: 600000
+            request-timeout: 12000001
+        tlsCACerts:
+            path: crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/tls/ca.crt
 
-        peer0.org2.acme.com:
-            url: grpcs://localhost:8051
-            eventUrl: grpcs://localhost:8053
-            grpcOptions:
-                ssl-target-name-override: peer0.org2.acme.com
-                grpc.keepalive_time_ms: 600000
-            #same level as grpcOptions (Error: invalid grpc option value:tlsCACerts)
-            tlsCACerts:
-                path: crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/tls/ca.crt
+    peer0.org2.acme.com:
+        url: grpcs://localhost:8051
+        eventUrl: grpcs://localhost:8053
+        grpcOptions:
+            ssl-target-name-override: peer0.org2.acme.com
+            grpc.keepalive_time_ms: 600000
+            request-timeout: 12000002
+        #same level as grpcOptions (Error: invalid grpc option value:tlsCACerts)
+        tlsCACerts:
+            path: crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/tls/ca.crt
 
-        peer0.org3.acme.com:
-            url: grpcs://localhost:9051
-            eventUrl: grpcs://localhost:9053
-            grpcOptions:
-                ssl-target-name-override: peer0.org3.acme.com
-                grpc.keepalive_time_ms: 600000
-            tlsCACerts:
-                path: crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/tls/ca.crt
+    peer0.org3.acme.com:
+        url: grpcs://localhost:9051
+        eventUrl: grpcs://localhost:9053
+        grpcOptions:
+            ssl-target-name-override: peer0.org3.acme.com
+            grpc.keepalive_time_ms: 600000
+            #Added this for getGenesisBlock timeout
+            request-timeout: 12000002
+        tlsCACerts:
+            path: crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/tls/ca.crt
 
 certificateAuthorities:
   ca-org1:

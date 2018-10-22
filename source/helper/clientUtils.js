@@ -20,12 +20,13 @@ async function getClientForOrg(orgname) {
   Constants.logger.info(Constants.hfc.getConfigSetting(connprofilepathstr));
   Constants.logger.info('****************** printed the orgname config file path ************************');
   // Note: Use the same client object and load again
-  // ERROR: This does not work
+  // NO ERROR: This does work
   // Since the keystore is only provided in the config it will search from there
   // We need to put something there. Take from the CA and store it there
   client.loadFromConfig(connprofilepathstr);
   // Comment END: Required when key value store would be used
-  Constants.logger.info(client.orgname); // Does not type cast and shows it fully
+  // Use _mspid instead of mspid
+  Constants.logger.info(client._mspid); // Does not type cast and shows it fully
   Constants.logger.info('****************** client after loadfromconfig END ************************');
   return client;
 }
@@ -57,8 +58,9 @@ async function enrollClientForOrg(orgname, client) {
   Constants.logger.info('****************** initCredentialStores ::: SUCCESS ************************');
   Constants.logger.info(promiseCredentialStore);
   Constants.logger.info('****************** printed client after calling initCredentialStores ************************');
-  
-  const fabCAClient = client.getCertificateAuthority();
+  // ERROR: no error but loads only ca-org1
+  // pass caname as parameter
+  const fabCAClient = client.getCertificateAuthority(ClientHelper.getCAName(orgname));
   Constants.logger.info('****************** getCertificateAuthority ::: CALLED ************************');
   Constants.logger.info(fabCAClient);
   Constants.logger.info('****************** getCertificateAuthority ::: PRINTED CACLIENT instance ************************');
@@ -66,7 +68,7 @@ async function enrollClientForOrg(orgname, client) {
   // user does not exist and state store has not been set
   if (userContextPromise != null) {
     Constants.logger.info('****************** getUserContext::NOT NULL returned - user exists in store ************************');
-    return null;
+    // return null;
   }
   Constants.logger.info('****************** getUserContext had no user ADMIN - hence create by enrolling  ************************');
   // TODO: User getUserContext for future requests from the keystore instead of enrolling
@@ -131,6 +133,9 @@ async function enrollClientForOrg(orgname, client) {
     // client = null;
     Constants.logger.info('****************** client.setUserContext returned FALSE. USER not persisted and not enrolled************************');
   }
+  // ERROR: This promise is pending - this is only if we want to use it again
+  // TODO: something
+  // TODO: some condition to pick from kvs if it exists instead of going to the ca
   const adminSigningIdentity = userPersisted.setEnrollment(
     key,
     cert,
@@ -233,11 +238,18 @@ async function createChannelForOrg(client) {
   };
   // ERROR: Remove the if condition - having the channel object loaded is no guarantee for
   // the channel to have been created
+  // TODO: rectify this. channel is not created, there should be another way to know channel
+  // has been created
   try {
-    const channel = client.getChannel(channelName, true);
+    // ERROR: this param is the one seen in the network config - remove it
+    const channel = client.getChannel(null, true);
     Constants.logger.info('****************** GETCHANNEL - CALLED ************************');
     Constants.logger.info(channel);
     Constants.logger.info('****************** GETCHANNEL - PRINTED CHANNEL ************************');
+    // TODO: remove hack - throwing error on purpose so that it creates a channel and 
+    // make sure you create it only once - should not be specific to the org
+    // throw Error('hack to create a channel');
+    // creates mychannel.block = did it manually using the cli -
     // ERROR: No error - getting the channel even if the blockchain is stopped and restarted. 
     // The genesis block is not deleted
     // docker logs orderer.acme.com
@@ -258,6 +270,7 @@ async function createChannelForOrg(client) {
     // TO create the channel - the network should be running
     Constants.logger.info('****************** GETCHANNEL - CATCH ************************');
     const response = await client.createChannel(createChannelRequest);
+
     Constants.logger.info('****************** CREATECHANNEL - CALLED ************************');
     Constants.logger.info(response.status);
     Constants.logger.info(response.message);
@@ -427,7 +440,11 @@ async function joinChannel(client, peername, orgname) {
     Constants.logger.info('Calling peers in organization "%s" to join the channel', orgname);
     // first setup the client for this org
     Constants.logger.info('Successfully got the fabric client for the organization "%s"', orgname);
-    channel = client.getChannel(ClientHelper.getChannelNameFromConfig());
+    // ERROR: (node:25734) UnhandledPromiseRejectionWarning: TypeError: Channel options must be an object with string keys and integer or string values
+    // Remove the name param  (ClientHelper.getChannelNameFromConfig())- we want it from the client not from config
+
+    // ERROR: Throw error = true
+    channel = client.getChannel(null, true);
     if (!channel) {
       const message = util.format('Channel %s was not defined in the connection profile', Constants.channelnamestr);
       Constants.logger.info(message);
@@ -448,12 +465,15 @@ async function joinChannel(client, peername, orgname) {
     }
     */
     if (channelPeerArr.length > 0) {
+      // TODO: 3 in array? Need to change?
+      // TODO: check if exists add else not add for all 3
       channelPeerArr.forEach((channelPeer) => {
         // TODO: Change it to a constant from the connprofile to match with the peername argument
-        if (channelPeer.peer.url === 'grpcs://localhost:7051') {
+        if (channelPeer._peer._url === 'grpcs://localhost:7051') {
           Constants.logger.info('Channel Peer exists. Need not join peer to the channel');
           Constants.logger.info('****************** getChannelPeers:: NO PEERS RETURNING ************************');
-          return null;
+          // return null;
+          // TODO: Does it mean need not join peer to the channel? we still need to
         }
         Constants.logger.info('****************** getChannelPeers:: PEERS THERE CONTINUE ************************');
       }); // for each
@@ -461,7 +481,7 @@ async function joinChannel(client, peername, orgname) {
     // If channel peer does not exists come here
     // TODO: Put all the below code in the else of channelPeer does not exist
     // Add peer
-    try {
+    /*try {
       // get peer from channel
       const channelPeer = channel.getPeer(peername);
       Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
@@ -483,13 +503,36 @@ async function joinChannel(client, peername, orgname) {
       Constants.logger.info(channelPeer);
       Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
     } // Ctach if no peer is there
+    */
     // next step is to get the genesis_block from the orderer,
     // the starting point for the channel that we want to join
-    const request = {
+    // ERROR: Need time out also
+    /*
+      const request = {
       txId: client.newTransactionID(true) // get an admin based transactionID
     };
-    const genesisBlock = await channel.getGenesisBlock(request);
+    */
+    // ERROR: Orderer requesty parameter is not valid, must be an orderer name or an orderer object
+    // channed in orderer section in conn_profile.yaml
+    const request = {
+      txId: client.newTransactionID(true), // get an admin based transactionID,
+    };
 
+    // ERROR: Failing at getGenesisBlock - the client and other details are getting loaded 
+    // dynamically
+    // ERROR: Message = Failed to connect before the deadline
+    // ERROR: it is not traking 300000 and taking 3000
+    let genesisBlock = null;
+    try {
+      genesisBlock = await channel.getGenesisBlock(request);
+      Constants.logger.info(genesisBlock);
+      Constants.logger.info('****************** channel.getGenesisiBlock:: printed genesisBlock************************');
+    } catch (error) {
+      Constants.logger.info('****************** channel.getGenesisiBlock:: FAILURE************************');
+      Constants.logger.info(error.message);
+      Constants.logger.info('****************** channel.getGenesisiBlock:: FAILURE printed errror message************************');
+      return null;
+    }
     // tell each peer to join and wait for the event hub of each peer to tell us
     // that the channel has been created on each peer
     const promises = [];
@@ -535,9 +578,9 @@ async function joinChannel(client, peername, orgname) {
       eh.connect();
       // this opens the event stream that must be shutdown at some point with a disconnect()
     });
-
+    // All permissions of the peer should come from config?
     const joinRequest = {
-      targets: peername,
+      targets: channelPeerArr, // peername TODO: Change this to channel peers - since all 3 will join the channel once
       // using the peer names which only is allowed when a connection profile is loaded
       txId: client.newTransactionID(true), // get an admin based transactionID
       block: genesisBlock
@@ -601,7 +644,7 @@ async function joinChannel(client, peername, orgname) {
 }
 module.exports.joinChannel = joinChannel;
 
-/*
+/*version
 // tell each peer to join and wait f{ key:
    ECDSA_KEY {
      _key:

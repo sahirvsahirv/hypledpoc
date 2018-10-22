@@ -798,6 +798,7 @@ function adminrouter(navigate) {
       client = await ClientUtils.getClientForOrg(orgname);
       // ERROR: Client not taking ORG2 - filled up with ORG1 details
       await ClientUtils.enrollClientForOrg(orgname, client);
+      // Dont need to create again
       await ClientUtils.createChannelForOrg(client);
       await ClientUtils.joinChannel(client, peername, orgname);
 
