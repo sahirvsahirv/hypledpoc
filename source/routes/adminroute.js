@@ -783,26 +783,46 @@ function adminrouter(navigate) {
     // Try putting an await and an async to 'adminRouter' function
     Constants.logger.info('****************** ORG1 PEERS START ************************');
     let orgname = Constants.ORG1;
-    let peername = Constants.peer0org1;
+    // const peers = [Constants.peer0org1, Constants.peer0org2, Constants.peer0org3];
     let asyncfunction = null;
     // ERROR: The async function is not getting called. Added a semicolon
+    
     asyncfunction = async () => {
-      let client = await ClientUtils.getClientForOrg(orgname);
-      await ClientUtils.enrollClientForOrg(orgname, client);
-      await ClientUtils.createChannelForOrg(client);
-      await ClientUtils.joinChannel(client, peername, orgname);
-      Constants.logger.info('****************** ORG2 PEERS START ************************');
+      // only once these two
+      
+      orgname = Constants.ORG1;
+      const client1 = await ClientUtils.getClientForOrg(orgname);
+      // enroll client for all three orgs
+      await ClientUtils.enrollClientForOrg(orgname, client1);
+      await ClientUtils.createChannelForOrgPrep(client1);
+      await ClientUtils.createChannelForOrg(client1);
+      // join channel for one client again?
+      await ClientUtils.joinChannel(client1, [Constants.peer0org1], orgname);
+      
       orgname = Constants.ORG2;
-      peername = Constants.peer0org2;
-      // load it again for ORG2
-      client = await ClientUtils.getClientForOrg(orgname);
-      // ERROR: Client not taking ORG2 - filled up with ORG1 details
-      await ClientUtils.enrollClientForOrg(orgname, client);
-      // Dont need to create again
-      await ClientUtils.createChannelForOrg(client);
-      await ClientUtils.joinChannel(client, peername, orgname);
+      const client2 = await ClientUtils.getClientForOrg(orgname);
+      // enroll client for all three orgs
+      await ClientUtils.enrollClientForOrg(orgname, client2);
+      // join channel for one client again?
+      await ClientUtils.joinChannel(client2, [Constants.peer0org2], orgname);
 
-      Constants.logger.info('****************** ORG2 PEERS END ************************');
+      orgname = Constants.ORG3;
+      const client3 = await ClientUtils.getClientForOrg(orgname);
+      // enroll client for all three orgs
+      await ClientUtils.enrollClientForOrg(orgname, client3);
+      // join channel for one client again?
+      await ClientUtils.joinChannel(client3, [Constants.peer0org3], orgname);
+
+      // load it again for ORG2 - ERROR use the same client again and sign for all 3 orgs and
+      // join channel with 3 peers
+      // client = await ClientUtils.getClientForOrg(orgname);
+      // ERROR: Client not taking ORG2 - filled up with ORG1 details
+      // await ClientUtils.enrollClientForOrg(orgname, client);
+      // Dont need to create again
+      // await ClientUtils.createChannelForOrg(client);
+      // await ClientUtils.joinChannel(client, peername, orgname);
+
+      
     };
     // ERROR: to make the function call, had to call the clientpromise()
     let clientpromise = asyncfunction();

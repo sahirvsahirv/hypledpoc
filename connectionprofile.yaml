@@ -72,10 +72,10 @@ channels:
                 ledgerQuery: true
                 eventSource: false
             peer0.org3.acme.com:
-                    endorsingPeer: true
-                    chaincodeQuery: true
-                    ledgerQuery: true
-                    eventSource: true
+                endorsingPeer: true
+                chaincodeQuery: true
+                ledgerQuery: true
+                eventSource: true
 # the below are for conveneience in the dev environment alone
 # sample config from from https://jira.hyperledger.org/browse/FABN-808
 organizations:

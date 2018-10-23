@@ -24,6 +24,10 @@ const peer0Org1 = 'peer0.org1.acme.com';
 const peer0Org2 = 'peer0.org2.acme.com';
 const peer0Org3 = 'peer0.org3.acme.com';
 const secretPasswordStr = 'secret';
+
+const signaturesAllOrgs = [];
+const createChannelRequest = null;
+
 module.exports = {
   logger: appLogger,
   hfc: Client,
@@ -42,7 +46,8 @@ module.exports = {
   signedcertstr: signedCertStr,
   channeltxfile: channelTxFile,
   channeltxpathconfigstr: channelTxPathConfigStr,
-  // signaturesallorgs: signaturesAllOrgs,
+  signaturesallorgs: signaturesAllOrgs,
+  createchannelrequest: createChannelRequest,
   channelnamestr: channelNameStr,
   orderername: ordererName,
   peer0org1: peer0Org1,

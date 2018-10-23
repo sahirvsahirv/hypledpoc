@@ -27,6 +27,11 @@ async function getClientForOrg(orgname) {
   // Comment END: Required when key value store would be used
   // Use _mspid instead of mspid
   Constants.logger.info(client._mspid); // Does not type cast and shows it fully
+
+  const promiseCredentialStore = await client.initCredentialStores();
+  Constants.logger.info('****************** initCredentialStores ::: SUCCESS ************************');
+  Constants.logger.info(promiseCredentialStore);
+  Constants.logger.info('****************** printed client after calling initCredentialStores ************************');
   Constants.logger.info('****************** client after loadfromconfig END ************************');
   return client;
 }
@@ -54,10 +59,6 @@ async function enrollClientForOrg(orgname, client) {
   // await needs the function - CreateChannel to be an async function
   // manage return of a promise by making the calling function async
 
-  const promiseCredentialStore = await client.initCredentialStores();
-  Constants.logger.info('****************** initCredentialStores ::: SUCCESS ************************');
-  Constants.logger.info(promiseCredentialStore);
-  Constants.logger.info('****************** printed client after calling initCredentialStores ************************');
   // ERROR: no error but loads only ca-org1
   // pass caname as parameter
   const fabCAClient = client.getCertificateAuthority(ClientHelper.getCAName(orgname));
@@ -199,7 +200,7 @@ async function enrollClientForOrg(orgname, client) {
 module.exports.enrollClientForOrg = enrollClientForOrg;
 
 
-async function createChannelForOrg(client) {
+async function createChannelForOrgPrep(client) {
   Constants.logger.info('****************** CREATING CHANNEL ************************');
   const channelName = ClientHelper.getChannelNameFromConfig();
   Constants.logger.info('****************** createChannelForOrg - INSIDE FUNCTTION ************************');
@@ -216,32 +217,69 @@ async function createChannelForOrg(client) {
   const envelope = fs.readFileSync(ClientHelper.getClientChannelTxFilePath());
   const channelConfig = client.extractChannelConfig(envelope);
   const signature = client.signChannelConfig(channelConfig);
-  const signaturesallorgs = [];
+  
   Constants.logger.info('****************** extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG- DONE ************************');
   Constants.logger.info(channelConfig);
+  // ERROR: Signed by all three peers since i moved them all inside the channel in config
   Constants.logger.info(signature);
   Constants.logger.info('****************** pushing signature for ORG - DONE ************************');
-  signaturesallorgs.push(signature);
+  Constants.signaturesallorgs.push(signature);
   Constants.logger.info('****************** PRINTED extractChannelConfig and signChannelConfig - config to pass to CreateChannel ORG - DONE ************************');
 
+  // DO this only once after adding all signatures
+  // 
   // channel is created by the orderer initially
   // each peer will join the channel by sending channel configuration to each of the peer nodes
   // TODO: restructure Do this only if 0, 1, 2 are over
-  let createChannelRequest = null;
-  createChannelRequest = {
+  Constants.createchannelrequest = {
     name: channelName, // 'mychannel',
     // orderer is not there in balance-transfer example
     // orderer: Constants.orderername, // 'orderer.acme.com',
-    signatures: [signature], // signaturesallorgs
+    signatures: Constants.signaturesallorgs, // signaturesallorgs
     config: channelConfig,
     txId: createChannelTxId
   };
+  
+  
+
+    // try catch channel does not exist create a channel
+    // exists because we created it now - or it already exists
+    // Constants.logger.info('****************** CREATECHANNEL - CATCH ************************');
+    // Constants.logger.info(err);
+    // Constants.logger.info('****************** CREATECHANNEL - CATCH DONE ************************');
+  
+  // return client;
+
+
+  // ORDERER LOGS docker logs
+  // 2018-10-20 17:37:29.544 UTC [fsblkstorage] updateCheckpoint -> DEBU 3ba Broadcasting about update checkpointInfo: latestFileChunkSuffixNum=[0], latestFileChunksize=[28923], isChainEmpty=[false], lastBlockNumber=[1]
+  // 2018-10-20 17:37:29.544 UTC [orderer/commmon/multichannel] commitBlock -> DEBU 3bb [channel: testchainid] Wrote block 1
+
+  // PEER LOGS 
+  // deployed all system chaincodes
+  // 2018-10-20 17:35:56.257 UTC [nodeCmd] func7 -> INFO 1b9 Starting profiling server with listenAddress = 0.0.0.0:6060
+
+  // Get genesisblock fails - no channel
+  // create channel using command line
+  // 2018-10-20 18:50:05.902 UTC [fsblkstorage] updateCheckpoint -> DEBU 418 Broadcasting about update checkpointInfo: latestFileChunkSuffixNum=[0], latestFileChunksize=[28846], isChainEmpty=[false], lastBlockNumber=[1]
+  // 2018-10-20 18:50:05.902 UTC [orderer/commmon/multichannel] commitBlock -> DEBU 419 [channel: testchainid] Wrote block 1
+  // peer channel list still empty
+  // getgenesisblock succeeds
+  // peer channel list on cli still does not return anything since peer has not been joined to the channel
+
+  // stop the ledger and restart it and see if genesisBlock succeeds
+}
+module.exports.createChannelForOrgPrep = createChannelForOrgPrep;
+
+async function createChannelForOrg(client) {
   // ERROR: Remove the if condition - having the channel object loaded is no guarantee for
   // the channel to have been created
   // TODO: rectify this. channel is not created, there should be another way to know channel
   // has been created
   try {
     // ERROR: this param is the one seen in the network config - remove it
+    //  TODO: https://stackoverflow.com/questions/46449327/how-to-get-all-existing-channels-in-hyperledger-1-0-node-sdk
+    // This or try getGenesisBlock and in catch add this
     const channel = client.getChannel(null, true);
     Constants.logger.info('****************** GETCHANNEL - CALLED ************************');
     Constants.logger.info(channel);
@@ -268,8 +306,18 @@ async function createChannelForOrg(client) {
     // TODO: how do you verify channel has been created?
     // create a channel
     // TO create the channel - the network should be running
+    let response = null;
     Constants.logger.info('****************** GETCHANNEL - CATCH ************************');
-    const response = await client.createChannel(createChannelRequest);
+    try {
+      Constants.logger.info('****************** CREATECHANNEL - CALLED ************************');
+      response = await client.createChannel(Constants.createchannelrequest);
+      Constants.logger.info(response);
+      Constants.logger.info('****************** CREATECHANNEL - PRINTED RESPONSE ************************');
+    } catch (error) {
+      Constants.logger.info('****************** CREATECHANNEL - CATCH ************************');
+      Constants.logger.info(error.msg);
+      Constants.logger.info('****************** CREATECHANNEL - CATCH PRINTED ERROR MSG ************************');
+    }
 
     Constants.logger.info('****************** CREATECHANNEL - CALLED ************************');
     Constants.logger.info(response.status);
@@ -281,36 +329,9 @@ async function createChannelForOrg(client) {
     } else {
       Constants.logger.info('****************** CREATECHANNEL - FAILED ************************');
     }// create channel failed
-
-    // try catch channel does not exist create a channel
-    // exists because we created it now - or it already exists
-    // Constants.logger.info('****************** CREATECHANNEL - CATCH ************************');
-    // Constants.logger.info(err);
-    // Constants.logger.info('****************** CREATECHANNEL - CATCH DONE ************************');
   }
-  // return client;
-
-
-  // ORDERER LOGS docker logs
-  // 2018-10-20 17:37:29.544 UTC [fsblkstorage] updateCheckpoint -> DEBU 3ba Broadcasting about update checkpointInfo: latestFileChunkSuffixNum=[0], latestFileChunksize=[28923], isChainEmpty=[false], lastBlockNumber=[1]
-  // 2018-10-20 17:37:29.544 UTC [orderer/commmon/multichannel] commitBlock -> DEBU 3bb [channel: testchainid] Wrote block 1
-
-  // PEER LOGS 
-  // deployed all system chaincodes
-  // 2018-10-20 17:35:56.257 UTC [nodeCmd] func7 -> INFO 1b9 Starting profiling server with listenAddress = 0.0.0.0:6060
-
-  // Get genesisblock fails - no channel
-  // create channel using command line
-  // 2018-10-20 18:50:05.902 UTC [fsblkstorage] updateCheckpoint -> DEBU 418 Broadcasting about update checkpointInfo: latestFileChunkSuffixNum=[0], latestFileChunksize=[28846], isChainEmpty=[false], lastBlockNumber=[1]
-  // 2018-10-20 18:50:05.902 UTC [orderer/commmon/multichannel] commitBlock -> DEBU 419 [channel: testchainid] Wrote block 1
-  // peer channel list still empty
-  // getgenesisblock succeeds
-  // peer channel list on cli still does not return anything since peer has not been joined to the channel
-
-  // stop the ledger and restart it and see if genesisBlock succeeds
 }
 module.exports.createChannelForOrg = createChannelForOrg;
-
 /*
 async function joinChannel(orgname, peername, client) {
   Constants.logger.info('****************** JOIN CHANNEL - INSIDE FUNCTTION ************************');
@@ -427,7 +448,7 @@ async function joinChannel(orgname, peername, client) {
 /*
  * Have an organization join a channel
  */
-async function joinChannel(client, peername, orgname) {
+async function joinChannel(client, peers, orgname) {
   // TODO: Test the whole code for a multi peer per org network and change the code to an array
   // of peers at required places
 
@@ -470,20 +491,32 @@ async function joinChannel(client, peername, orgname) {
       channelPeerArr.forEach((channelPeer) => {
         // TODO: Change it to a constant from the connprofile to match with the peername argument
         if (channelPeer._peer._url === 'grpcs://localhost:7051') {
-          Constants.logger.info('Channel Peer exists. Need not join peer to the channel');
-          Constants.logger.info('****************** getChannelPeers:: NO PEERS RETURNING ************************');
+          Constants.logger.info('Channel Peer exists. Need not join peer to the channel %s', channelPeer._peer._url);
+          // return null;
+          // TODO: Does it mean need not join peer to the channel? we still need to
+        }
+        if (channelPeer._peer._url === 'grpcs://localhost:8051') {
+          Constants.logger.info('Channel Peer exists. Need not join peer to the channel %s', channelPeer._peer._url);
+          // return null;
+          // TODO: Does it mean need not join peer to the channel? we still need to
+        }
+        if (channelPeer._peer._url === 'grpcs://localhost:9051') {
+          Constants.logger.info('Channel Peer exists. Need not join peer to the channel %s', channelPeer._peer._url);
           // return null;
           // TODO: Does it mean need not join peer to the channel? we still need to
         }
         Constants.logger.info('****************** getChannelPeers:: PEERS THERE CONTINUE ************************');
       }); // for each
-    } // if there are channelPeers added to the channel need not fo and add more
+    } else if (channelPeerArr.length === 0) {
+      // if there are channelPeers added to the channel need not fo and add more
+      Constants.logger.info('****************** getChannelPeers:: NO PEERS RETURNING ************************');
+    }
     // If channel peer does not exists come here
     // TODO: Put all the below code in the else of channelPeer does not exist
     // Add peer
-    /*try {
+    try {
       // get peer from channel
-      const channelPeer = channel.getPeer(peername);
+      const channelPeer = channel.getPeer(peers[0]);
       Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
       Constants.logger.info(channelPeer);
       Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
@@ -491,19 +524,20 @@ async function joinChannel(client, peername, orgname) {
       // if peer is not in channel, add it
       // get from the client and add it to the channel
       Constants.logger.info('****************** channel.getPeer:: FAILURE - getPeer from client and add it to the channel ************************');
-      const peer1 = client.getPeer(peername);
+      // TODO: Put a for loop here
+      const peer1 = client.getPeer(peers[0]);
       Constants.logger.info('****************** client.getPeer:: SUCCESS ************************');
       Constants.logger.info(peer1);
       Constants.logger.info('****************** client.getPeer:: printed  ************************');
       // Add it to the channel
       channel.addPeer(peer1, ClientHelper.getMSPofOrg(orgname), true, false); // last is replace, third is endorsing peer
       Constants.logger.info('****************** channel.addPeer:: SUCCESS  ************************');
-      const channelPeer = channel.getPeer(peername);
+      const channelPeer = channel.getPeer(peers[0]);
       Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
       Constants.logger.info(channelPeer);
       Constants.logger.info('****************** channel.getPeer:: printed channelPeer ************************');
     } // Ctach if no peer is there
-    */
+    
     // next step is to get the genesis_block from the orderer,
     // the starting point for the channel that we want to join
     // ERROR: Need time out also
@@ -530,6 +564,8 @@ async function joinChannel(client, peername, orgname) {
     } catch (error) {
       Constants.logger.info('****************** channel.getGenesisiBlock:: FAILURE************************');
       Constants.logger.info(error.message);
+      Constants.logger.info('******************************************************');
+      Constants.logger.info('******************************************************');
       Constants.logger.info('****************** channel.getGenesisiBlock:: FAILURE printed errror message************************');
       return null;
     }
@@ -579,8 +615,8 @@ async function joinChannel(client, peername, orgname) {
       // this opens the event stream that must be shutdown at some point with a disconnect()
     });
     // All permissions of the peer should come from config?
-    const joinRequest = {
-      targets: channelPeerArr, // peername TODO: Change this to channel peers - since all 3 will join the channel once
+    const joinRequest = { // TODO: if this works remove peers as a param Or send peers
+      targets: peers, // peername TODO: Change this to channel peers - since all 3 will join the channel once
       // using the peer names which only is allowed when a connection profile is loaded
       txId: client.newTransactionID(true), // get an admin based transactionID
       block: genesisBlock
@@ -598,7 +634,7 @@ async function joinChannel(client, peername, orgname) {
       if (peerResult.response && peerResult.response.status === 200) {
         Constants.logger.info('Successfully joined peer to the channel %s', Constants.channelnamestr);
       } else {
-        const message = util.format('Failed to joined peer to the channel %s', Constants.channelnamestr);
+        const message = util.format('Failed to join peer to the channel %s', Constants.channelnamestr);
         errorMessage = message;
         Constants.logger.info(message);
       }
@@ -656,7 +692,12 @@ module.exports.joinChannel = joinChannel;
         setPrivateKeyHex: [Function],
         setPublicKeyHex: [Function],
         getPublicKeyXYHex: [Function],
-        getShortNISTPCurveName: [Function],
+        getShortNI. Need not join peer to the channel grpcs://localhost:7051
+info: [APPLICATION]: ****************** getChannelPeers:: PEERS THERE CONTINUE ************************
+info: [APPLICATION]: Channel Peer exists. Need not join peer to the channel grpcs://localhost:8051
+info: [APPLICATION]: ****************** getChannelPeers:: PEERS THERE CONTINUE ************************
+info: [APPLICATION]: Channel Peer exists. Need not join peer to the channel grpcs://localhost:9051
+info: [APPLICATION]: ****************** getChannelPeers:: PEERS THERE COSTPCurveName: [Function],
         generateKeyPairHex: [Function],
         signWithMessageHash: [Function],
         signHex: [Function],
