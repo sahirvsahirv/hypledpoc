@@ -101,20 +101,19 @@ async function buttonClickLogic() {
     await ClientUtils.joinChannel([Constants.peer0org3], ClientUtils.getUserName(), Constants.ORG3);
     // only admin can install
     Constants.logger.info('****************************INSTALL Chaincode for ORG1****************************');
-    await ClientUtils.installChaincode([Constants.peer0org1], 'chaincode', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
+    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
-    await ClientUtils.installChaincode([Constants.peer0org2], 'chaincode', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
+    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG3****************************');
-    await ClientUtils.installChaincode([Constants.peer0org3], 'chaincode', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
+    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
 
     // Instantiate chaincode on one of the peeers in org1
-    Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
-    
-
+    // Error: peer0.org1.acme.com    | 2018-10-31 18:28:38.291 UTC [lscc] executeDeployOrUpgrade -> ERRO 35fe cannot get package for chaincode (utility_workflow:v0)-err:open /var/hyperledger/production/chaincodes/utility_workflow.v0: no such file or directory
+    // Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
+    await ClientUtils.instantiateChaincode([Constants.peer0org1], 'mychannel', 'utility_workflow', 'v0', 'init', 'go', '[]', ClientUtils.getUserName(), Constants.ORG1);
   }; // async fuexportsnction end
-
   // ERROR: to mexportsake the function call, had to call the clientpromise()
   const clientpromise = asyncfunction();
   Constants.logger.info('****************** Post calling the async function in admin route ************************');

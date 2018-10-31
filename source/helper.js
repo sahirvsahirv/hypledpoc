@@ -714,7 +714,11 @@ mychannel
 */
 
 function setupChaincodeDeploy() {
+  // ERROR: Defined in config.json  one more .. required
   process.env.GOPATH = path.join(__dirname, hfc.getConfigSetting('CC_SRC_PATH'));
+  Constants.logger.info('********************************************GO PATH for chain code ****************************************');
+  Constants.logger.info(process.env.GOPATH);
+  Constants.logger.info('********************************************GO PATH for chain code printed ****************************************');
 }
 
 exports.setupChaincodeDeploy = setupChaincodeDeploy;
@@ -743,12 +747,14 @@ async function installChaincode(
   // Error: 2 UNKNOWN: chaincode error (status: 500, message: Authorization for GETINSTALLEDCHAINCODES on channel getinstalledchaincodes has been denied with error Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy [Admins]: [This identity is not an admin])
   //  at new createStatusError (/home/hypledvm/go/src/utilitypoc/network/acmedevmode/node_modules/fabric-client/node_modules/grpc/src/client.js:64:15)
   // passing true helps
-  const queryResponse = client.queryInstalledChaincodes(peers[0], true);
+  // ERROR: Pending request - need an await to wait for query to finish
+  const queryResponse = await client.queryInstalledChaincodes(peers[0], true);
   Constants.logger.info('******************************queryInstalledChaincodes called ******************************');
-  Constants.logger.info(queryResponse);
+  console.log(queryResponse);
   Constants.logger.info('******************************queryInstalledChaincodes queryResponse printed ******************************');
-
-  if (queryResponse != null) {
+  console.log(queryResponse.chaincodes.length);
+  Constants.logger.info('******************************queryInstalledChaincodes printed number of chaincodes installed ******************************');
+  if (queryResponse.chaincodes.length !== 0) {
     // TODO: check the name version etc and see if it matches
     Constants.logger.info('******************************CHAINCODE already installed ******************************');
     return null;
@@ -777,7 +783,7 @@ async function installChaincode(
     let allGood = true;
     if (proposalResponses) {
       for (var i in proposalResponses) {
-        const oneGood = false;
+        let oneGood = false;
         if (proposalResponses &&
           proposalResponses[i].response &&
           proposalResponses[i].response.status === 200) {
@@ -817,7 +823,17 @@ async function installChaincode(
 }
 exports.installChaincode = installChaincode;
 
-async function instantiateChaincode(peers, channelName, chaincodeName, chaincodeVersion, functionName, chaincodeType, args, username, orgname) {
+async function instantiateChaincode(
+  peers,
+  channelName,
+  chaincodeName,
+  chaincodeVersion,
+  functionName,
+  chaincodeType,
+  args,
+  username,
+  orgname
+) {
   Constants.logger.info('*********************** Instantiate chaincode on channel ' + channelName + ' ***********************');
   let errorMessage = null;
 
@@ -831,6 +847,7 @@ async function instantiateChaincode(peers, channelName, chaincodeName, chaincode
       Constants.logger.info(message);
       throw new Error(message);
     }
+    Constants.logger.info('Channel %s received', channel);
     const txId = client.newTransactionID(true); // Get an admin based transactionID
     // An admin based transactionID will
     // indicate that admin identity should
@@ -852,18 +869,29 @@ async function instantiateChaincode(peers, channelName, chaincodeName, chaincode
       request.fcn = functionName;
     }
     // instantiate takes much longer
-    const results = await channel.sendInstantiateProposal(request, 600000000000);
+    let results = null;
+    try {
+      results = await channel.sendInstantiateProposal(request, 600000000000);
+      Constants.logger.info('Sent instantiate proposal');
+    } catch (error) {
+      Constants.logger.info('In catch - sendInstantiateProposal');
+      Constants.logger.info(error.message);
+      Constants.logger.info('In catch - sendInstantiateProposal printed error message');
+    }
 
     // the returned object has both the endorsement results
     // and the actual proposal, the proposal will be needed
     // later when we send a transaction to the orderer
     const proposalResponses = results[0];
     const proposal = results[1];
-
+    Constants.logger.info('Results - sendInstantiateProposal');
+    Constants.logger.info(proposalResponses);
+    Constants.logger.info(proposal);
+    Constants.logger.info('Results Done- sendInstantiateProposal');
     // lets have a look at the responses to see if they are
     // all good, if good they will also include signatures
     // required to be committed
-    const allGood = true;
+    let allGood = true;
     if (proposalResponses != null) {
       for (let i in proposalResponses) {
         let oneGood = false;
@@ -885,21 +913,21 @@ async function instantiateChaincode(peers, channelName, chaincodeName, chaincode
         'Successfully sent Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - "%s", endorsement signature: %s',
         proposalResponses[0].response.status, proposalResponses[0].response.message,
         proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature
-      ));
+      )); // logger.info
 
       // wait for the channel-based event hub to tell us that the
       // instantiate transaction was committed on the peer
       const promises = [];
-      let eventHubs = channel.getChannelEventHubsForOrg();
+      const eventHubs = channel.getChannelEventHubsForOrg();
       Constants.logger.info('found %s eventhubs for this organization %s', eventHubs.length, orgname);
       eventHubs.forEach((eh) => {
         const instantiateEventPromise = new Promise((resolve, reject) => {
           Constants.logger.info('instantiateEventPromise - setting up event');
-          let eventTimeout = setTimeout(() => {
+          const eventTimeout = setTimeout(() => {
             const message = 'REQUEST_TIMEOUT:' + eh.getPeerAddr();
             Constants.logger.info(message);
             eh.disconnect();
-          }, 60000);
+          }, 6000000000000000000000); // setTimeout
           eh.registerTxEvent(deployId, (tx, code, blockNum) => {
             Constants.logger.info('The chaincode instantiate transaction has been committed on peer %s', eh.getPeerAddr());
             Constants.logger.info('Transaction %s has status of %s in blocl %s', tx, code, blockNum);
@@ -918,16 +946,16 @@ async function instantiateChaincode(peers, channelName, chaincodeName, chaincode
             clearTimeout(eventTimeout);
             Constants.logger.info(err);
             reject(err);
-          },
-            // the default for 'unregister' is true for transaction listeners
-            // so no real need to set here, however for 'disconnect'
-            // the default is false as most event hubs are long running
-            // in this use case we are using it only once
-            { unregister: true, disconnect: true });
-          eh.connect();
-        });
+          }, // registerTxEvent promise
+          // the default for 'unregister' is true for transaction listeners
+          // so no real need to set here, however for 'disconnect'
+          // the default is false as most event hubs are long running
+          // in this use case we are using it only once
+          // { unregister: true, disconnect: true });
+          eh.connect()); // registerTxEvent end
+        }); // instantiate EventPromise
         promises.push(instantiateEventPromise);
-      });
+      }); // foreach
 
       const ordererRequest = {
         txId: txId, // must include the transaction id so that the outbound
@@ -942,7 +970,7 @@ async function instantiateChaincode(peers, channelName, chaincodeName, chaincode
       // put the send to the orderer last so that the events get registered and
       // are ready for the orderering and committing
       promises.push(sendPromise);
-      const results = await Promise.all(promises);
+      results = await Promise.all(promises);
       Constants.logger.info(util.format('------->>> R E S P O N S E : %j', results));
       const response = results.pop(); //  orderer results are last in the results
       if (response.status === 'SUCCESS') {
@@ -993,5 +1021,5 @@ async function instantiateChaincode(peers, channelName, chaincodeName, chaincode
     throw new Error(message);
   }
   return response;
-}
+} // instantiate chaincode
 exports.instantiateChaincode = instantiateChaincode;
