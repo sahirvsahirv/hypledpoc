@@ -53,17 +53,54 @@ async function buttonClickLogic() {
   let asyncfunction = null;
   asyncfunction = async () => {
     const username = ClientUtils.getUserName();
-    const orgname = Constants.ORG1;
+    let orgname = Constants.ORG1;
 
-    const response = await ClientUtils.getRegisteredUser(orgname, username);
-    Constants.logger.info(response);
+    Constants.logger.info('****************************ORG1****************************');
+    const responseOrg1 = await ClientUtils.getRegisteredUser(orgname, username);
+    Constants.logger.info(responseOrg1);
     Constants.logger.info('****************** returned from registering the username %s for organization %s ************************', username, orgname);
-    if (response && typeof response !== 'string') {
+    if (responseOrg1 && typeof responseOrg1 !== 'string') {
       Constants.logger.info('Successfully registered the username %s for organization %s', username, orgname);
     } else {
       Constants.logger.info('Failed to register the username %s for organization %s', username, orgname);
     }
+    
+    Constants.logger.info('****************************ORG2****************************');
+    orgname = Constants.ORG2;
+    const responseOrg2 = await ClientUtils.getRegisteredUser(orgname, username);
+    Constants.logger.info(responseOrg1);
+    Constants.logger.info('****************** returned from registering the username %s for organization %s ************************', username, orgname);
+    if (responseOrg2 && typeof responseOrg2 !== 'string') {
+      Constants.logger.info('Successfully registered the username %s for organization %s', username, orgname);
+    } else {
+      Constants.logger.info('Failed to register the username %s for organization %s', username, orgname);
+    }
+
+    Constants.logger.info('****************************ORG3****************************');
+    orgname = Constants.ORG3;
+    const responseOrg3 = await ClientUtils.getRegisteredUser(orgname, username);
+    Constants.logger.info(responseOrg3);
+    Constants.logger.info('****************** returned from registering the username %s for organization %s ************************', username, orgname);
+    if (responseOrg3 && typeof responseOrg3 !== 'string') {
+      Constants.logger.info('Successfully registered the username %s for organization %s', username, orgname);
+    } else {
+      Constants.logger.info('Failed to register the username %s for organization %s', username, orgname);
+    }
+
+    Constants.logger.info('****************************Create Channel for ORG1****************************');
+    await ClientUtils.createChannelForOrg(ClientUtils.getChannelNameFromConfig(), ClientUtils.getUserName(), Constants.ORG1);
+    
+    
+    Constants.logger.info('****************************JOIN Channel for ORG1****************************');
+    await ClientUtils.joinChannel([Constants.peer0org1], ClientUtils.getUserName(), Constants.ORG1);
+
+    Constants.logger.info('****************************JOIN Channel for ORG2****************************');
+    await ClientUtils.joinChannel([Constants.peer0org2], ClientUtils.getUserName(), Constants.ORG2);
+
+    Constants.logger.info('****************************JOIN Channel for ORG3****************************');
+    await ClientUtils.joinChannel([Constants.peer0org3], ClientUtils.getUserName(), Constants.ORG3);
   }; // async fuexportsnction end
+
   // ERROR: to mexportsake the function call, had to call the clientpromise()
   const clientpromise = asyncfunction();
   Constants.logger.info('****************** Post calling the async function in admin route ************************');

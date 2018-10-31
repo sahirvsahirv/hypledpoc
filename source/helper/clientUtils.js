@@ -199,7 +199,6 @@ async function enrollClientForOrg(orgname, client) {
 }
 module.exports.enrollClientForOrg = enrollClientForOrg;
 
-
 async function createChannelForOrgPrep(client) {
   Constants.logger.info('****************** CREATING CHANNEL ************************');
   const channelName = ClientHelper.getChannelNameFromConfig();

@@ -1,3 +1,4 @@
+---
 name: "acmedevmode_basic"
 version: "1.0"
 
@@ -5,19 +6,21 @@ client:
   # Which organization does this application instance belong to? The value must be the name of an org
   # defined under "organizations"
   organization: Org2
-
-  # set connection timeouts for the peer and orderer for the client
+  # ERROR: Change timeout - getGenesisBlock - failed to connect before deadline
+  # set connection timeouts for the peer and orderer for the client and remove the 's'
   connection:
     timeout:
       peer:
         endorser: 3
         eventHub: 3
         eventReg: 3
-      orderer: 3000000
+      #client.CreateChannel gives and error -  addTimeout - timeout value is not a number for the orderer : 3s
+      # UnhandledPromiseRejectionWarning: Error: invalid grpc option value:tlsCACerts-> [object Object] expected string|integer
+      orderer: 300000
 
   # Needed to load users crypto keys and certs.
-  cryptoconfig:
-    path: ./crypto-config
+  #cryptoconfig:
+   # path: ./crypto-config
 
   # Some SDKs support pluggable KV stores, the properties under "credentialStore" 
   # are implementation specific

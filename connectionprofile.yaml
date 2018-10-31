@@ -176,9 +176,9 @@ certificateAuthorities:
   ca-org2:
     url: https://localhost:8054
     httpOptions:
-      verify: falin admin routee
+      verify: false
     tlsCACerts:
-      path: cryptin admin route-config/peerOrganizations/org2.acme.com/ca/ca.org2.acme.com-cert.pem
+      path: crypto-config/peerOrganizations/org2.acme.com/ca/ca.org2.acme.com-cert.pem
       # Client key and cert for TLS mutual auth with Fabric CA. If the target Fabric CA server
       # does not have TLS mutual auth turned on, then this section is not needed
       client:
