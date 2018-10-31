@@ -4,8 +4,8 @@
    "jwt_expiretime": "36000",
    "channelName":"mychannel",
    "network-connection-profile-path":"../../",
-   "CC_SRC_PATH":"./channel-artifacts",
-   "eventWaitTime":"30000",
+   "CC_SRC_PATH":"../chaincode",
+   "eventWaitTime":"30000000000000",
    "cryptoContent": [
        {    
             "orgName": "Org1MSP",

@@ -15,6 +15,7 @@
  */
 const util = require('util');
 const fs = require('fs');
+const path = require('path');
 
 const hfc = require('fabric-client');
 
@@ -348,16 +349,18 @@ async function createChannelForOrg(channelName, username, orgname) {
     info: [APPLICATION]: ****************** CREATECHANNEL - printed createChannelResponse ************************
     */
     Constants.logger.info('****************** CREATECHANNEL - CALLED ************************');
-    Constants.logger.info(response.status);
-    Constants.logger.info(response.message);
-    if (response && response.status === 'SUCCESS') {
-      Constants.logger.info('****************** CREATECHANNEL - DONE ************************');
-      Constants.logger.info(response);
-      Constants.logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
-    } else {
-      Constants.logger.info('****************** CREATECHANNEL - FAILED ************************');
-    }// create channel failed
-  }
+    if (response != null) {
+      Constants.logger.info(response.status);
+      Constants.logger.info(response.message);
+      if (response && response.status === 'SUCCESS') {
+        Constants.logger.info('****************** CREATECHANNEL - DONE ************************');
+        Constants.logger.info(response);
+        Constants.logger.info('****************** CREATECHANNEL - printed createChannelResponse ************************');
+      } else {
+        Constants.logger.info('****************** CREATECHANNEL - FAILED ************************');
+      } // else
+    } // if response != null
+  }// catch
 }
 module.exports.createChannelForOrg = createChannelForOrg;
 
@@ -637,6 +640,8 @@ async function joinChannel(peers, username, orgname) {
 }
 module.exports.joinChannel = joinChannel;
 
+// ERROR: Context deadline is due to breakpoints and does not come in npm start
+
 /*
 info: [APPLICATION]: Calling peers in organization "Org1" to join the channel
 info: [APPLICATION]: Successfully got the fabric client for the organization "Org1"
@@ -708,3 +713,285 @@ mychannel
 
 */
 
+function setupChaincodeDeploy() {
+  process.env.GOPATH = path.join(__dirname, hfc.getConfigSetting('CC_SRC_PATH'));
+}
+
+exports.setupChaincodeDeploy = setupChaincodeDeploy;
+
+// install chaincode on org1 peers and org2 peers and org3 peers - 1 org at a time
+async function installChaincode(
+  peers,
+  chaincodeName,
+  chaincodePath,
+  chaincodeVersion,
+  chaincodeType,
+  username,
+  orgname
+) {
+  Constants.logger.info('******************************Install chaincode on organizations******************************');
+  Constants.logger.info('******************************Called setupChaincodeDeploy ******************************');
+
+  // ERROR:  error: [client-utils.js]: sendPeersProposal - Promise is rejected:
+  // Error: 2 UNKNOWN: chaincode error (status: 500, message: Error installing chaincode code
+  // chaincode:v0(chaincode /var/hyperledger/production/chaincodes/chaincode.v0 exists))
+  // first setup the client for this org
+  const client = await getClientForOrg(orgname, username);
+  Constants.logger.info('Successfully got the fabric client for the organization "%s"', orgname);
+  // TODO: change it to check for all peers
+  // ERROR: error: [client-utils.js]: sendPeersProposal - Promise is rejected: 
+  // Error: 2 UNKNOWN: chaincode error (status: 500, message: Authorization for GETINSTALLEDCHAINCODES on channel getinstalledchaincodes has been denied with error Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy [Admins]: [This identity is not an admin])
+  //  at new createStatusError (/home/hypledvm/go/src/utilitypoc/network/acmedevmode/node_modules/fabric-client/node_modules/grpc/src/client.js:64:15)
+  // passing true helps
+  const queryResponse = client.queryInstalledChaincodes(peers[0], true);
+  Constants.logger.info('******************************queryInstalledChaincodes called ******************************');
+  Constants.logger.info(queryResponse);
+  Constants.logger.info('******************************queryInstalledChaincodes queryResponse printed ******************************');
+
+  if (queryResponse != null) {
+    // TODO: check the name version etc and see if it matches
+    Constants.logger.info('******************************CHAINCODE already installed ******************************');
+    return null;
+  }
+  setupChaincodeDeploy();
+  let errorMessage = null;
+  try {
+    Constants.logger.info('Calling peers in organization "%s" to join the channel', orgname);
+    txId = client.newTransactionID(true); // get an admin transactionID
+    const request = {
+      targets: peers,
+      chaincodePath: chaincodePath,
+      chaincodeId: chaincodeName,
+      chaincodeVersion: chaincodeVersion,
+      chaincodeType: chaincodeType
+    };
+    const results = await client.installChaincode(request);
+    // the returned object has both the endorsement results
+    // and the actual proposal, the proposal will be needed
+    // later when we send a transaction to the orederer
+    const proposalResponses = results[0];
+
+    // lets have a look at the responses to see if they are
+    // all good, if good they will also include signatures
+    // required to be committed
+    let allGood = true;
+    if (proposalResponses) {
+      for (var i in proposalResponses) {
+        const oneGood = false;
+        if (proposalResponses &&
+          proposalResponses[i].response &&
+          proposalResponses[i].response.status === 200) {
+          oneGood = true;
+          Constants.logger.info('install proposal was good');
+        } else {
+          Constants.logger.info('install proposal was bad %j', proposalResponses[0]);
+        } // end of else
+        allGood = allGood & oneGood;
+      } // for var in proposalResponses
+      if (allGood) {
+        Constants.logger.info('Successfully sent install Proposal and received ProposalResponse');
+      } else {
+        errorMessage = 'Failed to send install Proposal or receive valid response. Response null or status is not 200';
+        Constants.logger.info(errorMessage);
+      } // install proposals else
+    } // end of if proposal responses
+  } catch (error) {
+    Constants.logger.info('Failed to install due to error: ' + (error.stack ? error.stack : error));
+    errorMessage = error.toString();
+  } // end of catch
+  let response = null;
+  if (!errorMessage) {
+    const message = util.format('Successfully install chaincode');
+    Constants.logger.info(message);
+    // build a response to send back to the REST caller
+    response = {
+      success: true,
+      message: message
+    };
+  } else {
+    const message = util.format('Failed to install due to:%s', errorMessage);
+    Constants.logger.info(message);
+    throw new Error(message);
+  }
+  return response;
+}
+exports.installChaincode = installChaincode;
+
+async function instantiateChaincode(peers, channelName, chaincodeName, chaincodeVersion, functionName, chaincodeType, args, username, orgname) {
+  Constants.logger.info('*********************** Instantiate chaincode on channel ' + channelName + ' ***********************');
+  let errorMessage = null;
+
+  try {
+    // first setup the client for this org
+    const client = await getClientForOrg(orgname, username);
+    Constants.logger.info('Successfully got the fabric client for the organization "%s"', orgname);
+    const channel = client.getChannel(channelName);
+    if (!channel) {
+      const message = util.format('Channel %s was not defined in the connection profile', channelName);
+      Constants.logger.info(message);
+      throw new Error(message);
+    }
+    const txId = client.newTransactionID(true); // Get an admin based transactionID
+    // An admin based transactionID will
+    // indicate that admin identity should
+    // be used to sign the proposal request.
+    // will need the transaction ID string for the event registration later
+    const deployId = txId.getTransactionID();
+
+    // send proposal to endorser
+    const request = {
+      targets: peers,
+      chaincodeId: chaincodeName,
+      chaincodeType: chaincodeType,
+      chaincodeVersion: chaincodeVersion,
+      args: args,
+      txId: txId
+    };
+
+    if (functionName) {
+      request.fcn = functionName;
+    }
+    // instantiate takes much longer
+    const results = await channel.sendInstantiateProposal(request, 600000000000);
+
+    // the returned object has both the endorsement results
+    // and the actual proposal, the proposal will be needed
+    // later when we send a transaction to the orderer
+    const proposalResponses = results[0];
+    const proposal = results[1];
+
+    // lets have a look at the responses to see if they are
+    // all good, if good they will also include signatures
+    // required to be committed
+    const allGood = true;
+    if (proposalResponses != null) {
+      for (let i in proposalResponses) {
+        let oneGood = false;
+        if (
+          proposalResponses &&
+          proposalResponses[i].response &&
+          proposalResponses[i].response.status === 200) {
+          oneGood = true;
+          Constants.logger.info('instantiate proposal was good');
+        } else {
+          Constants.logger.info('instantiate proposal was bad');
+        } // else
+        allGood = allGood & oneGood;
+      } // for loop
+    } // if proposal responses exist
+
+    if (allGood) {
+      Constants.logger.info(util.format(
+        'Successfully sent Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - "%s", endorsement signature: %s',
+        proposalResponses[0].response.status, proposalResponses[0].response.message,
+        proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature
+      ));
+
+      // wait for the channel-based event hub to tell us that the
+      // instantiate transaction was committed on the peer
+      const promises = [];
+      let eventHubs = channel.getChannelEventHubsForOrg();
+      Constants.logger.info('found %s eventhubs for this organization %s', eventHubs.length, orgname);
+      eventHubs.forEach((eh) => {
+        const instantiateEventPromise = new Promise((resolve, reject) => {
+          Constants.logger.info('instantiateEventPromise - setting up event');
+          let eventTimeout = setTimeout(() => {
+            const message = 'REQUEST_TIMEOUT:' + eh.getPeerAddr();
+            Constants.logger.info(message);
+            eh.disconnect();
+          }, 60000);
+          eh.registerTxEvent(deployId, (tx, code, blockNum) => {
+            Constants.logger.info('The chaincode instantiate transaction has been committed on peer %s', eh.getPeerAddr());
+            Constants.logger.info('Transaction %s has status of %s in blocl %s', tx, code, blockNum);
+            clearTimeout(eventTimeout);
+
+            if (code !== 'VALID') {
+              const message = util.format('The chaincode instantiate transaction was invalid, code:%s', code);
+              Constants.logger.info(message);
+              reject(new Error(message));
+            } else {
+              const message = 'The chaincode instantiate transaction was valid.';
+              Constants.logger.info(message);
+              resolve(message);
+            }
+          }, (err) => {
+            clearTimeout(eventTimeout);
+            Constants.logger.info(err);
+            reject(err);
+          },
+            // the default for 'unregister' is true for transaction listeners
+            // so no real need to set here, however for 'disconnect'
+            // the default is false as most event hubs are long running
+            // in this use case we are using it only once
+            { unregister: true, disconnect: true });
+          eh.connect();
+        });
+        promises.push(instantiateEventPromise);
+      });
+
+      const ordererRequest = {
+        txId: txId, // must include the transaction id so that the outbound
+        // transaction to the orderer will be signed by the admin
+        // id as was the proposal above, notice that transactionID
+        // generated above was based on the admin id not the current
+        // user assigned to the 'client' instance.
+        proposalResponses: proposalResponses,
+        proposal: proposal
+      };
+      const sendPromise = channel.sendTransaction(ordererRequest);
+      // put the send to the orderer last so that the events get registered and
+      // are ready for the orderering and committing
+      promises.push(sendPromise);
+      const results = await Promise.all(promises);
+      Constants.logger.info(util.format('------->>> R E S P O N S E : %j', results));
+      const response = results.pop(); //  orderer results are last in the results
+      if (response.status === 'SUCCESS') {
+        Constants.logger.info('Successfully sent transaction to the orderer.');
+      } else {
+        errorMessage = util.format('Failed to order the transaction. Error code: %s', response.status);
+        Constants.logger.info(errorMessage);
+      }
+
+      // now see what each of the event hubs reported
+      if (results != null) {
+        for (let i in results) {
+          let eventHubResult = results[i];
+          let eventHub = eventHubs[i];
+          Constants.logger.info('Event results for event hub :%s', eventHub.getPeerAddr());
+          if (typeof event_hub_result === 'string') {
+            Constants.logger.info(eventHubResult);
+          } else {
+            if (!errorMessage) errorMessage = eventHubResult.toString();
+            Constants.logger.info(eventHubResult.toString());
+          }
+        }
+      } // if
+    } else {
+      errorMessage = util.format('Failed to send Proposal and receive all good ProposalResponse');
+      Constants.logger.info(errorMessage);
+    } // if allGood
+  } catch (error) {
+    Constants.logger.info('Failed to send instantiate due to error: ' + error.stack ? error.stack : error);
+    errorMessage = error.toString();
+  }
+  let response = null;
+  if (!errorMessage) {
+    const message = util.format(
+      'Successfully instantiate chaingcode in organization %s to the channel \'%s\'',
+      orgname,
+      channelName
+    );
+    Constants.logger.info(message);
+    // build a response to send back to the REST caller
+    response = {
+      success: true,
+      message: message
+    };
+  } else {
+    const message = util.format('Failed to instantiate. cause:%s', errorMessage);
+    Constants.logger.info(message);
+    throw new Error(message);
+  }
+  return response;
+}
+exports.instantiateChaincode = instantiateChaincode;

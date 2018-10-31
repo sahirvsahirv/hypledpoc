@@ -99,6 +99,20 @@ async function buttonClickLogic() {
 
     Constants.logger.info('****************************JOIN Channel for ORG3****************************');
     await ClientUtils.joinChannel([Constants.peer0org3], ClientUtils.getUserName(), Constants.ORG3);
+    // only admin can install
+    Constants.logger.info('****************************INSTALL Chaincode for ORG1****************************');
+    await ClientUtils.installChaincode([Constants.peer0org1], 'chaincode', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
+
+    Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
+    await ClientUtils.installChaincode([Constants.peer0org2], 'chaincode', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
+
+    Constants.logger.info('****************************INSTALL Chaincode for ORG3****************************');
+    await ClientUtils.installChaincode([Constants.peer0org3], 'chaincode', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
+
+    // Instantiate chaincode on one of the peeers in org1
+    Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
+    
+
   }; // async fuexportsnction end
 
   // ERROR: to mexportsake the function call, had to call the clientpromise()

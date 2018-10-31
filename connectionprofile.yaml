@@ -76,6 +76,12 @@ channels:
                 chaincodeQuery: true
                 ledgerQuery: true
                 eventSource: true
+        # [Optional]. what chaincodes are expected to exist on this channel? The application can use
+        # this information to validate that the target peers are in the expected state by comparing
+        # this list with the query results of getInstalledChaincodes() and getInstantiatedChaincodes()
+        chaincodes:
+        # the format follows the "cannonical name" of chaincodes by fabric code
+            - mycc:v0
 # the below are for conveneience in the dev environment alone
 # sample config from from https://jira.hyperledger.org/browse/FABN-808
 organizations:
