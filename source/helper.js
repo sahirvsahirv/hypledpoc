@@ -194,10 +194,12 @@ async function createChannelForOrgPrep(channelName, username, orgname) {
   // channel is created by the orderer initially
   // each peer will join the channel by sending channel configuration to each of the peer nodes
   // TODO: restructure Do this only if 0, 1, 2 are over
+
+  // ERROR: Missing all required input request parameters for initialize channel
   Constants.createchannelrequest = {
     name: channelName, // 'mychannel',
     // orderer is not there in balance-transfer example
-    // orderer: Constants.orderername, // 'orderer.acme.com',
+    orderer: Constants.orderername, // 'orderer.acme.com',
     signatures: Constants.signaturesallorgs, // signaturesallorgs
     config: channelConfig,
     txId: createChannelTxId
@@ -282,7 +284,8 @@ async function createChannelForOrg(channelName, username, orgname) {
     createchannelrequest = {
       name: channelName, // 'mychannel',
       // orderer is not there in balance-transfer example
-      // orderer: Constants.orderername, // 'orderer.acme.com',
+      // ERROR:  Missing all required input request parameters for initialize channel
+      orderer: Constants.orderername, // 'orderer.acme.com',
       signatures: [signature], // signaturesallorgs
       config: channelConfig,
       txId: createChannelTxId
@@ -327,7 +330,8 @@ async function createChannelForOrg(channelName, username, orgname) {
       Constants.logger.info('****************** CREATECHANNEL - PRINTED RESPONSE ************************');
     } catch (error) {
       Constants.logger.info('****************** CREATECHANNEL - CATCH ************************');
-      Constants.logger.info(error.msg);
+      // ERROR: message not msg
+      Constants.logger.info(error.message);
       Constants.logger.info('****************** CREATECHANNEL - CATCH PRINTED ERROR MSG ************************');
     }
     /* No timeout while running it with npm start without brakpoints

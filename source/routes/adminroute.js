@@ -116,18 +116,18 @@ async function buttonClickLogic() {
     // info: [APPLICATION]: Failed to install due to error: Error: ENOENT: no such file or directory, lstat '/home/hypledvm/go/src/utilitypoc/chaincode/src/src'
 
     // info: [APPLICATION]: Failed to install due to error: Error: Missing chaincodePath parameter
-    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', '/', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
+    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', '/utilitypoc/chaincode/src/', 'v2', 'go', ClientUtils.getUserName(), Constants.ORG1);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
-    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow', '/', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
+    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow', '/utilitypoc/chaincode/src/', 'v2', 'go', ClientUtils.getUserName(), Constants.ORG2);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG3****************************');
-    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow', '/', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
+    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow', '/utilitypoc/chaincode/src/', 'v2', 'go', ClientUtils.getUserName(), Constants.ORG3);
 
     // Instantiate chaincode on one of the peeers in org1
     // Error: peer0.org1.acme.com    | 2018-10-31 18:28:38.291 UTC [lscc] executeDeployOrUpgrade -> ERRO 35fe cannot get package for chaincode (utility_workflow:v0)-err:open /var/hyperledger/production/chaincodes/utility_workflow.v0: no such file or directory
     // Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
-    await ClientUtils.instantiateChaincode([Constants.peer0org1], 'mychannel', 'utility_workflow', 'v0', 'init', 'go', '[]', ClientUtils.getUserName(), Constants.ORG1);
+    await ClientUtils.instantiateChaincode([Constants.peer0org1, Constants.peer0org2, Constants.peer0org2], 'mychannel', 'utility_workflow', 'v2', 'init', 'go', '[]', ClientUtils.getUserName(), Constants.ORG1);
   }; // async fuexportsnction end
   // ERROR: to mexportsake the function call, had to call the clientpromise()
   const clientpromise = asyncfunction();
@@ -151,3 +151,19 @@ adminRouter.route('/').post((req, res) => {
 
 // export the name of the function
 module.exports = adminrouter;
+
+
+// ERROR:
+// channel is not yet created
+// peer0.org1.acme.com    | 2018-11-01 02:07:09.178 UTC [protoutils] ValidateProposalMessage -> WARN d0f channel [mychannel]: MSP error: channel doesn't exist
+// peer0.org1.acme.com    | 2018-11-01 02:07:09.201 UTC [endorser] ProcessProposal -> DEBU d10 Exit: request from%!(EXTRA string=172.21.0.1:43734)
+// peer0.org1.acme.com    | 2018-11-01 02:11:39.024 UTC [endorser] ProcessProposal -> DEBU d11 Entering: Got request from 172.21.0.6:58492
+// peer0.org1.acme.com    | 2018-11-01 02:11:39.035 UTC [protoutils] ValidateProposalMessage -> DEBU d12 ValidateProposalMessage starts for signed proposal 0xc4218b52c0
+// peer0.org1.acme.com    | 2018-11-01 02:11:39.036 UTC [protoutils] validateChannelHeader -> DEBU d13 validateChannelHeader info: header type 3
+// peer0.org1.acme.com    | 2018-11-01 02:11:39.036 UTC [protoutils] checkSignatureFromCreator -> DEBU d14 begin
+// peer0.org1.acme.com    | 2018-11-01 02:11:39.043 UTC [protoutils] ValidateProposalMessage -> WARN d15 channel [mychannel]: MSP error: channel doesn't exist
+
+
+// ERRORS from running instantiate from peer and CLI
+// From peer Error: Error getting broadcast client: failed to load config for OrdererClient: unable to load orderer.tls.rootcert.file: open /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/acme.com/orderers/orderer.acme.com/msp/tlscacerts/tlsca.acme.com-cert.pem: no such file or directory
+// from CLI: Error: Error endorsing chaincode: rpc error: code = Unknown desc = access denied: channel [mychannel] creator org [Org1MSP]

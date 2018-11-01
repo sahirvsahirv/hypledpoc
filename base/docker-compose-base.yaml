@@ -51,6 +51,8 @@ services:
         - /var/run/:/host/var/run/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/msp:/etc/hyperledger/fabric/msp
+        # ERROR: trying to instantiate from command line on the peer
+        - ../crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/tls:/etc/hyperledger/fabric/tls
         # ERROR: path wrt peer- base four ../ required
@@ -81,6 +83,7 @@ services:
         - /var/run/:/host/var/run/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/msp:/etc/hyperledger/fabric/msp
+        - ../crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/tls:/etc/hyperledger/fabric/tls
         - ../../../../github.com:/opt/go/src/github.com/
@@ -110,6 +113,7 @@ services:
         - /var/run/:/host/var/run/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/msp:/etc/hyperledger/fabric/msp
+        - ../crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/tls:/etc/hyperledger/fabric/tls
         - ../../../../github.com:/opt/go/src/github.com/
