@@ -66,16 +66,16 @@ channels:
                 ledgerQuery: true
                 eventSource: true
                 discover: true
-            #peer0.org2.acme.com:
-             #   endorsingPeer: true
-             #   chaincodeQuery: false
-             #   ledgerQuery: true
-             #   eventSource: false
-            #peer0.org3.acme.com:
-             #   endorsingPeer: true
-              #  chaincodeQuery: true
-               # ledgerQuery: true
-                #eventSource: true
+            peer0.org2.acme.com:
+                endorsingPeer: true
+                chaincodeQuery: false
+                ledgerQuery: true
+                eventSource: false
+            peer0.org3.acme.com:
+                endorsingPeer: true
+                chaincodeQuery: true
+                ledgerQuery: true
+                eventSource: true
         # [Optional]. what chaincodes are expected to exist on this channel? The application can use
         # this information to validate that the target peers are in the expected state by comparing
         # this list with the query results of getInstalledChaincodes() and getInstantiatedChaincodes()
@@ -125,6 +125,7 @@ orderers:
             ssl-target-name-override: orderer.acme.com
             # increasing 15 to 30000
             grpc-max-send-message-length: 10000000
+            request-timeout: 12000001
         #not a grpc options value
         tlsCACerts:
             #relative path without quotes - UnhandledPromiseRejectionWarning: Error: invalid grpc option value:tlsCACerts-> [object Object] expected string|integer

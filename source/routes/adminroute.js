@@ -101,13 +101,28 @@ async function buttonClickLogic() {
     await ClientUtils.joinChannel([Constants.peer0org3], ClientUtils.getUserName(), Constants.ORG3);
     // only admin can install
     Constants.logger.info('****************************INSTALL Chaincode for ORG1****************************');
-    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
+    // ERROR: From the command line in chaincode instantiate
+    // 2018-11-01 00:55:26.996 UTC [msp/identity] Sign -> DEBU 007 Sign: digest: 3625FB52498CC0127AC620A0C7CDCBD0ED46DC465783991351E9EB4A39748872 
+    // Error: Error endorsing chaincode: rpc error: code = Unknown desc = error starting container: Failed to generate platform-specific docker build: Error returned from build: 1 "can't load package: package ../..: no Go files in /
+
+    // NOTE: chanincode name . version is concatenated if 1.0 mycc.1.0, if v0 mycc.v0
+
+    // error says no go files found the path mapped in the peer docker yaml should be provided here
+    // while instantiating from the command line it takes ../../ - and says no GO files found there
+    // error: [packager/Golang.js]: error while packaging /home/hypledvm/go/src/utilitypoc/network/chaincode/src/opt/go/src/github.com/src
+
+    // info: [APPLICATION]: Calling peers in organization "Org1" to join the channel
+    // error: [packager/Golang.js]: error while packaging /home/hypledvm/go/src/utilitypoc/chaincode/src/src
+    // info: [APPLICATION]: Failed to install due to error: Error: ENOENT: no such file or directory, lstat '/home/hypledvm/go/src/utilitypoc/chaincode/src/src'
+
+    // info: [APPLICATION]: Failed to install due to error: Error: Missing chaincodePath parameter
+    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', '/', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
-    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
+    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow', '/', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG3****************************');
-    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow', '../../', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
+    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow', '/', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
 
     // Instantiate chaincode on one of the peeers in org1
     // Error: peer0.org1.acme.com    | 2018-10-31 18:28:38.291 UTC [lscc] executeDeployOrUpgrade -> ERRO 35fe cannot get package for chaincode (utility_workflow:v0)-err:open /var/hyperledger/production/chaincodes/utility_workflow.v0: no such file or directory

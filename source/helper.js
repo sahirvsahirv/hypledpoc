@@ -715,6 +715,9 @@ mychannel
 
 function setupChaincodeDeploy() {
   // ERROR: Defined in config.json  one more .. required
+  // home/hypledvm/go/src/utilitypoc/network/chaincode
+  // ERROR: wrt to helper.js one more .. required
+  // /src shall be appeneded later through the parameter of instantiate
   process.env.GOPATH = path.join(__dirname, hfc.getConfigSetting('CC_SRC_PATH'));
   Constants.logger.info('********************************************GO PATH for chain code ****************************************');
   Constants.logger.info(process.env.GOPATH);
@@ -861,7 +864,7 @@ async function instantiateChaincode(
       chaincodeId: chaincodeName,
       chaincodeType: chaincodeType,
       chaincodeVersion: chaincodeVersion,
-      args: args,
+      // args: args,
       txId: txId
     };
 
@@ -871,7 +874,7 @@ async function instantiateChaincode(
     // instantiate takes much longer
     let results = null;
     try {
-      results = await channel.sendInstantiateProposal(request, 600000000000);
+      results = await channel.sendInstantiateProposal(request, 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000);
       Constants.logger.info('Sent instantiate proposal');
     } catch (error) {
       Constants.logger.info('In catch - sendInstantiateProposal');
