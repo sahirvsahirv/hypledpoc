@@ -4,7 +4,7 @@
    "jwt_expiretime": "36000",
    "channelName":"mychannel",
    "network-connection-profile-path":"../../",
-   "CC_SRC_PATH":"../../../../../",
+   "CC_SRC_PATH":"../../../chaincode/",
    "eventWaitTime":"30000000000000",
    "cryptoContent": [
        {    

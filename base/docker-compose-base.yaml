@@ -57,6 +57,7 @@ services:
         - ../crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/tls:/etc/hyperledger/fabric/tls
         # ERROR: path wrt peer- base four ../ required
         - ../../../../github.com:/opt/go/src/github.com/
+        - ../../../../github.com:/opt/gopath/src/github.com/
     ports:
       - 7051:7051
       - 7053:7053
@@ -87,6 +88,7 @@ services:
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/tls:/etc/hyperledger/fabric/tls
         - ../../../../github.com:/opt/go/src/github.com/
+        - ../../../../github.com:/opt/gopath/src/github.com/
     ports:
       - 8051:7051
       - 8053:7053
@@ -117,6 +119,7 @@ services:
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
         - ../crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/tls:/etc/hyperledger/fabric/tls
         - ../../../../github.com:/opt/go/src/github.com/
+        - ../../../../github.com:/opt/gopath/src/github.com/
     ports:
       - 9051:7051
       - 9053:7053

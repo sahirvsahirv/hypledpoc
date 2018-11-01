@@ -830,6 +830,25 @@ async function installChaincode(
 }
 exports.installChaincode = installChaincode;
 
+/*
+I am trying to use the fabric node SDK. All was well with the installation of chaincode. I can see the chaincode in /var/hyperledger/production/chaincodes
+
+I try to use sendInstantiateProposal through nodeSDK and I get a timeout.
+
+To get more clues, I login into the peer container and execute the following on the command line.
+
+root@dd30e03ee9b3:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer chaincode instantiate -o orderer.acme.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/acme.com/orderers/orderer.acme.com/msp/tlscacerts/tlsca.acme.com-cert.pem -C mychannel -n utility_workflow -v v2 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.member','Org2MSP.member','Org3MSP.member')" --logging-level debug
+2018-11-01 06:01:54.561 UTC [msp] GetLocalMSP -> DEBU 001 Returning existing local MSP
+2018-11-01 06:01:54.561 UTC [msp] GetDefaultSigningIdentity -> DEBU 002 Obtaining default signing identity
+2018-11-01 06:01:54.579 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 003 Using default escc
+2018-11-01 06:01:54.579 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 004 Using default vscc
+2018-11-01 06:01:54.579 UTC [chaincodeCmd] getChaincodeSpec -> DEBU 005 java chaincode disabled
+2018-11-01 06:01:54.579 UTC [msp/identity] Sign -> DEBU 006 Sign: plaintext: 0A9F070A6708031A0C08D2ADEADE0510...334D53500A04657363630A0476736363 
+2018-11-01 06:01:54.579 UTC [msp/identity] Sign -> DEBU 007 Sign: digest: AE0829701BD8EE9821CFA416B533F9EF953D46343BE1684E98A046F5E1889453 
+Error: Error endorsing chaincode: rpc error: code = Unknown desc = chaincode error (status: 500, message: instantiation policy violation: signature set did not satisfy policy)
+
+Any pointers would be helpful.
+*/
 async function instantiateChaincode(
   peers,
   channelName,

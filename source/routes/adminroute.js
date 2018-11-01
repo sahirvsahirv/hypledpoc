@@ -5,6 +5,8 @@ const debug = require('debug');
 // const path = require('path');
 // const fs = require('fs');
 
+const hfc = require('fabric-client');
+
 // nodemon internal watch failed error
 // echo fs.inotify.max_user_watches=582222 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 // https://stackoverflow.com/questions/34662574/node-js-getting-error-nodemon-internal-watch-failed-watch-enospc
@@ -116,18 +118,29 @@ async function buttonClickLogic() {
     // info: [APPLICATION]: Failed to install due to error: Error: ENOENT: no such file or directory, lstat '/home/hypledvm/go/src/utilitypoc/chaincode/src/src'
 
     // info: [APPLICATION]: Failed to install due to error: Error: Missing chaincodePath parameter
-    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', '/utilitypoc/chaincode/src/', 'v2', 'go', ClientUtils.getUserName(), Constants.ORG1);
+    // ERROR: Earlier path
+    // "CC_SRC_PATH":"../../../../../",
+    // ./utilitypoc/chaincode/src/
+
+
+    // ERROR: Thankfully some change from the previous status
+    // Till chaincode dir is set as the GOPATH
+    // By default takes a src underneath and then github.com/utility_workflow dir within that and then
+    // the name of the chaincode
+    // now the container gets created - dev-peer0.org1.acme.com-utility_workflow-v0 but could not start the chaincode
+
+    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
-    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow', '/utilitypoc/chaincode/src/', 'v2', 'go', ClientUtils.getUserName(), Constants.ORG2);
+    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG3****************************');
-    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow', '/utilitypoc/chaincode/src/', 'v2', 'go', ClientUtils.getUserName(), Constants.ORG3);
+    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
 
     // Instantiate chaincode on one of the peeers in org1
     // Error: peer0.org1.acme.com    | 2018-10-31 18:28:38.291 UTC [lscc] executeDeployOrUpgrade -> ERRO 35fe cannot get package for chaincode (utility_workflow:v0)-err:open /var/hyperledger/production/chaincodes/utility_workflow.v0: no such file or directory
     // Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
-    await ClientUtils.instantiateChaincode([Constants.peer0org1, Constants.peer0org2, Constants.peer0org2], 'mychannel', 'utility_workflow', 'v2', 'init', 'go', '[]', ClientUtils.getUserName(), Constants.ORG1);
+    await ClientUtils.instantiateChaincode([Constants.peer0org1], 'mychannel', 'utility_workflow', 'v0', 'init', 'go', '[]', ClientUtils.getUserName(), Constants.ORG1);
   }; // async fuexportsnction end
   // ERROR: to mexportsake the function call, had to call the clientpromise()
   const clientpromise = asyncfunction();
@@ -167,3 +180,8 @@ module.exports = adminrouter;
 // ERRORS from running instantiate from peer and CLI
 // From peer Error: Error getting broadcast client: failed to load config for OrdererClient: unable to load orderer.tls.rootcert.file: open /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/acme.com/orderers/orderer.acme.com/msp/tlscacerts/tlsca.acme.com-cert.pem: no such file or directory
 // from CLI: Error: Error endorsing chaincode: rpc error: code = Unknown desc = access denied: channel [mychannel] creator org [Org1MSP]
+
+
+// chaincodePath	string	Required. The path to the location of the source code of the chaincode. If the chaincode type is golang, then this path is the fully qualified package name, such as 'mycompany.com/myproject/mypackage/mychaincode'
+// https://blog.golang.org/package-names
+// Build tools map package paths onto directories. The go tool uses the GOPATH environment variable to find the source files for path "github.com/user/hello" in directory $GOPATH/src/github.com/user/hello. (This situation should be familiar, of course, but it's important to be clear about the terminology and structure of packages.)
