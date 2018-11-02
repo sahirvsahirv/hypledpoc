@@ -8,10 +8,24 @@
 
 // npm install express
 const express = require('express');
+const path = require('path'); // no need to do npm install
+const process = require('process');
+
+// for debugging the app?
+// npm install debug
+const debug = require('debug')('app');
+// npm install chalk
+const chalk = require('chalk');
+// it is for setting up for seeing more error messages on the console
+// npm install morgan
+const morgan = require('morgan');
 
 // for the app's configuration details - START
 require('./config.js');
 const hfc = require('fabric-client');
+const Constants = require('./source/constants.js');
+
+
 // for the app's configuration details - END
 
 const app = express();
@@ -25,25 +39,10 @@ const app = express();
 
 // npm start to start nodemon
 // to restart at anytime type rs
-
-// npm install chalk
-const chalk = require('chalk');
-
-// for debugging the app?
-// npm install debug
-const debug = require('debug')('app');
-
 debug('Hello');
-
-// it is for setting up for seeing more error messages on the console
-// npm install morgan
-const morgan = require('morgan');
-
 // morgan was to get more advanced output on the debug console
 app.use(morgan('combined'));
 
-const path = require('path'); // no need to do npm install
-const process = require('process');
 
 // set the view engine to jade
 app.set('views', './source/views');
@@ -96,9 +95,9 @@ app.listen(port, () => {
   debug(chalk.red(port));
 });
 
-const logger = hfc.getLogger('APPLICATION');
-logger.info('****************** SERVER STARTED ************************');
-logger.info('***************  http://%s:%s  ******************', host, port);
+// const logger = hfc.getLogger('APPLICATION');
+Constants.logger.info('****************** SERVER STARTED ************************');
+Constants.logger.info('***************  http://%s:%s  ******************', host, port);
 
 // run npm start
 // TODO: the port number 4000 does not work

@@ -112,6 +112,9 @@ services:
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
       - ./crypto-config/peerOrganizations/org1.acme.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    networks:
+      # ---CHANGED--- our network is called "basic"
+      - basic
     container_name: ca_peerOrg1
 
   ca.org2.acme.com:
@@ -129,6 +132,9 @@ services:
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
       - ./crypto-config/peerOrganizations/org2.acme.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    networks:
+      # ---CHANGED--- our network is called "basic"
+      - basic
     container_name: ca_peerOrg2
   
   ca.org3.acme.com:
@@ -146,4 +152,7 @@ services:
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
       - ./crypto-config/peerOrganizations/org3.acme.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    networks:
+      # ---CHANGED--- our network is called "basic"
+      - basic
     container_name: ca_peerOrg3

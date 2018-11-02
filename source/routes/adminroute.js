@@ -129,6 +129,8 @@ async function buttonClickLogic() {
     // the name of the chaincode
     // now the container gets created - dev-peer0.org1.acme.com-utility_workflow-v0 but could not start the chaincode
 
+    // https://hyperledger-fabric.readthedocs.io/en/release-1.1/chaincode4ade.html build and start chaincode
+    // 
     await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
@@ -140,7 +142,7 @@ async function buttonClickLogic() {
     // Instantiate chaincode on one of the peeers in org1
     // Error: peer0.org1.acme.com    | 2018-10-31 18:28:38.291 UTC [lscc] executeDeployOrUpgrade -> ERRO 35fe cannot get package for chaincode (utility_workflow:v0)-err:open /var/hyperledger/production/chaincodes/utility_workflow.v0: no such file or directory
     // Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
-    await ClientUtils.instantiateChaincode([Constants.peer0org1], 'mychannel', 'utility_workflow', 'v0', 'init', 'go', '[]', ClientUtils.getUserName(), Constants.ORG1);
+    await ClientUtils.instantiateChaincode([Constants.peer0org1], 'mychannel', 'utility_workflow', 'v0', 'init', 'golang', '[]', ClientUtils.getUserName(), Constants.ORG1);
   }; // async fuexportsnction end
   // ERROR: to mexportsake the function call, had to call the clientpromise()
   const clientpromise = asyncfunction();
@@ -185,3 +187,4 @@ module.exports = adminrouter;
 // chaincodePath	string	Required. The path to the location of the source code of the chaincode. If the chaincode type is golang, then this path is the fully qualified package name, such as 'mycompany.com/myproject/mypackage/mychaincode'
 // https://blog.golang.org/package-names
 // Build tools map package paths onto directories. The go tool uses the GOPATH environment variable to find the source files for path "github.com/user/hello" in directory $GOPATH/src/github.com/user/hello. (This situation should be familiar, of course, but it's important to be clear about the terminology and structure of packages.)
+// https://github.com/christo4ferris/node_sdk/blob/master/node-sdk-indepth.md

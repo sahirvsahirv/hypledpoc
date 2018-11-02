@@ -849,6 +849,8 @@ Error: Error endorsing chaincode: rpc error: code = Unknown desc = chaincode err
 
 Any pointers would be helpful.
 */
+// ERROR: https://hyperledger-fabric.readthedocs.io/en/release-1.3/logging-control.html
+// https://github.com/christo4ferris/node_sdk/blob/master/node-sdk-indepth.md
 async function instantiateChaincode(
   peers,
   channelName,
@@ -862,7 +864,7 @@ async function instantiateChaincode(
 ) {
   Constants.logger.info('*********************** Instantiate chaincode on channel ' + channelName + ' ***********************');
   let errorMessage = null;
-
+  hfc.setConfigSetting('request-timeout', 990000000000000000);
   try {
     // first setup the client for this org
     const client = await getClientForOrg(orgname, username);
@@ -882,13 +884,25 @@ async function instantiateChaincode(
     const deployId = txId.getTransactionID();
 
     // send proposal to endorser
-    const request = {
+    let request = {
       targets: peers,
       chaincodeId: chaincodeName,
       chaincodeType: chaincodeType,
       chaincodeVersion: chaincodeVersion,
       // args: args,
       txId: txId
+      // 'endorsement-policy':
+    };
+
+    request['endorsement-policy'] = {
+      identities: [
+        { role: { name: 'admin', mspId: 'Org1MSP' } },
+        { role: { name: 'admin', mspId: 'Org2MSP' } },
+        { role: { name: 'admin', mspId: 'Org3MSP' } }
+      ],
+      policy: {
+        '1-of': [{ 'signed-by': 0 }, { 'signed-by': 1 }, { 'signed-by': 2 }]
+      }
     };
 
     if (functionName) {
@@ -897,7 +911,9 @@ async function instantiateChaincode(
     // instantiate takes much longer
     let results = null;
     try {
-      results = await channel.sendInstantiateProposal(request, 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000);
+      // ERROR: error: [client-utils.js]: sendPeersProposal - Promise is rejected: Error: REQUEST_TIMEOUT
+      // ERROR: export HFC_LOGGING='{"debug":"console","info":"console"} on the npm start command line
+      results = await channel.sendInstantiateProposal(request, 999999);
       Constants.logger.info('Sent instantiate proposal');
     } catch (error) {
       Constants.logger.info('In catch - sendInstantiateProposal');
@@ -914,6 +930,7 @@ async function instantiateChaincode(
     Constants.logger.info(proposalResponses);
     Constants.logger.info(proposal);
     Constants.logger.info('Results Done- sendInstantiateProposal');
+
     // lets have a look at the responses to see if they are
     // all good, if good they will also include signatures
     // required to be committed
@@ -923,22 +940,25 @@ async function instantiateChaincode(
         let oneGood = false;
         if (
           proposalResponses &&
-          proposalResponses[i].response &&
-          proposalResponses[i].response.status === 200) {
+          proposalResponses[i].code === 0) { // ERROR: no status available. assuming 0 is for success
           oneGood = true;
           Constants.logger.info('instantiate proposal was good');
+        } else if (proposalResponses[i].code === 2) {
+            oneGood = true;
+            Constants.logger.info('instantiate proposal was good - chaincode already exists');  
         } else {
           Constants.logger.info('instantiate proposal was bad');
-        } // else
-        allGood = allGood & oneGood;
+        }
       } // for loop
-    } // if proposal responses exist
+    } else { // if proposal responses exist 
+      allGood = allGood & oneGood;
+    }
 
     if (allGood) {
       Constants.logger.info(util.format(
-        'Successfully sent Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - "%s", endorsement signature: %s',
-        proposalResponses[0].response.status, proposalResponses[0].response.message,
-        proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature
+        'Successfully sent Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - , endorsement signature: ',
+        proposalResponses[0].code, proposalResponses[0].message,
+        // proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature
       )); // logger.info
 
       // wait for the channel-based event hub to tell us that the
@@ -1042,6 +1062,7 @@ async function instantiateChaincode(
       message: message
     };
   } else {
+    // ERROR: "chaincode error (status: 500, message: chaincode exists utility_workflow)"
     const message = util.format('Failed to instantiate. cause:%s', errorMessage);
     Constants.logger.info(message);
     throw new Error(message);
@@ -1049,3 +1070,31 @@ async function instantiateChaincode(
   return response;
 } // instantiate chaincode
 exports.instantiateChaincode = instantiateChaincode;
+
+
+/*
+hypledvm@hypledvm-VirtualBox:~/go/src/utilitypoc/network/acmedevmode$ docker logs dev-peer0.org1.acme.com-utility_workflow-v0 
+2018-11-02 04:04:31.042 UTC [shim] SetupChaincodeLogging -> INFO 001 Chaincode (build level: 1.1.0) starting up ...
+2018-11-02 04:04:31.045 UTC [bccsp] initBCCSP -> DEBU 002 Initialize BCCSP [SW]
+2018-11-02 04:04:31.062 UTC [shim] userChaincodeStreamGetter -> DEBU 003 Peer address: peer0.org1.acme.com:7052
+2018-11-02 04:04:31.197 UTC [shim] userChaincodeStreamGetter -> DEBU 004 os.Args returns: [chaincode -peer.address=peer0.org1.acme.com:7052]
+2018-11-02 04:04:31.216 UTC [shim] chatWithPeer -> DEBU 005 Registering.. sending REGISTER
+2018-11-02 04:04:31.271 UTC [shim] func1 -> DEBU 006 []Received message REGISTERED from shim
+2018-11-02 04:04:31.272 UTC [shim] handleMessage -> DEBU 007 []Handling ChaincodeMessage of type: REGISTERED(state:created)
+2018-11-02 04:04:31.272 UTC [shim] beforeRegistered -> DEBU 008 Received REGISTERED, ready for invocations
+2018-11-02 04:04:31.291 UTC [shim] func1 -> DEBU 009 [60070bd3]Received message READY from shim
+2018-11-02 04:04:31.291 UTC [shim] handleMessage -> DEBU 00a [60070bd3]Handling ChaincodeMessage of type: READY(state:established)
+2018-11-02 04:04:31.291 UTC [shim] func1 -> DEBU 00b [60070bd3]Received message INIT from shim
+2018-11-02 04:04:31.291 UTC [shim] handleMessage -> DEBU 00c [60070bd3]Handling ChaincodeMessage of type: INIT(state:ready)
+2018-11-02 04:04:31.291 UTC [shim] beforeInit -> DEBU 00d Entered state ready
+2018-11-02 04:04:31.291 UTC [shim] beforeInit -> DEBU 00e [60070bd3]Received INIT, initializing chaincode
+Initializing Utility Workflow
+2018-11-02 04:04:31.294 UTC [utility workflow] Info -> INFO 00f success
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 010 [60070bd3]Init get response status: 200
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 011 [60070bd3]Init succeeded. Sending COMPLETED
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 012 [60070bd3]Move state message COMPLETED
+2018-11-02 04:04:31.294 UTC [shim] handleMessage -> DEBU 013 [60070bd3]Handling ChaincodeMessage of type: COMPLETED(state:ready)
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 014 [60070bd3]send state message COMPLETED
+*/
+
+// ERROR: broken pipe - [peer channel fetch --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/acme.com/orderers/orderer.acme.com/msp/tlscacerts/tlsca.acme.com-cert.pem]

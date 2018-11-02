@@ -1,7 +1,11 @@
 const Client = require('fabric-client');
+const sdkUtils = require('fabric-client/lib/utils.js');
 
 const APPLICATION = 'APPLICATION';
-const appLogger = Client.getLogger(APPLICATION);
+// ERROR: getLogger type not found when downgraded to fabric-client to 1.1
+// https://fabric-sdk-node.github.io/tutorial-logging.html
+const appLogger = sdkUtils.getLogger(APPLICATION); // for 1.1
+// const appLogger = Client.getLogger(APPLICATION); // for 1.2
 
 const orgNameConfigStr = 'orgName';
 const userNameConfigStr = 'username';
