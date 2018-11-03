@@ -114,6 +114,7 @@ services:
     volumes:
         - /var/run/:/host/var/run/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain
+        # ~/go/src/github.com/src/github.com$ this is the path the chaincode codes go
         - ../crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/msp:/etc/hyperledger/fabric/msp
         - ../crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
         # ---CHANGED--- changed to reflect peer name, org name and our company's domain

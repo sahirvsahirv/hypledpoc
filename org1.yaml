@@ -11,12 +11,12 @@ client:
   connection:
     timeout:
       peer:
-        endorser: 300000
-        eventHub: 300000
-        eventReg: 300000
+        endorser: 300000s
+        eventHub: 300000s
+        eventReg: 300000s
       #client.CreateChannel gives and error -  addTimeout - timeout value is not a number for the orderer : 3s
       # UnhandledPromiseRejectionWarning: Error: invalid grpc option value:tlsCACerts-> [object Object] expected string|integer
-      orderer: 300000
+      orderer: 300000s
 
   # Needed to load users crypto keys and certs.
   #cryptoconfig:

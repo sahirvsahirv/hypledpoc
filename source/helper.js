@@ -761,9 +761,21 @@ async function installChaincode(
   Constants.logger.info('******************************queryInstalledChaincodes queryResponse printed ******************************');
   console.log(queryResponse.chaincodes.length);
   Constants.logger.info('******************************queryInstalledChaincodes printed number of chaincodes installed ******************************');
-  if (queryResponse.chaincodes.length !== 0) {
+  // TODO: Put a for loop here for all chaincodes installed
+  // another way to check for debugging installations
+  // if ((queryResponse.chaincodes.length !== 0)
+  // ERROR: installed chaincode and failed while instantiate fails because
+  // thinks it is not installed and gives a proposal response that chaincode exists
+  if ((queryResponse.chaincodes.length !== 2)
+    && ((queryResponse.chaincodes[0].name === chaincodeName)
+    || (queryResponse.chaincodes[1].name === chaincodeName))) {
     // TODO: check the name version etc and see if it matches
     Constants.logger.info('******************************CHAINCODE already installed ******************************');
+    return null;
+  }
+  if ((queryResponse.chaincodes.length === 3)
+    && (queryResponse.chaincodes[0].name === chaincodeName)) {
+    Constants.logger.info('******************************CHAINCODE already installed - while debugging - the current one being tried ******************************');
     return null;
   }
   setupChaincodeDeploy();
@@ -783,7 +795,11 @@ async function installChaincode(
     // and the actual proposal, the proposal will be needed
     // later when we send a transaction to the orederer
     const proposalResponses = results[0];
-
+    // "2 UNKNOWN: chaincode error (status: 500, message: Error installing chaincode code utility_workflow_v2:v0(chaincode /var/hyperledger/production/chaincodes/utility_workflow_v2.v0 exists))")
+    if ((proposalResponses[0].code === 2) && (proposalResponses[0].message === '2 UNKNOWN: chaincode error (status: 500, message: Error installing chaincode code utility_workflow_v2:v0(chaincode /var/hyperledger/production/chaincodes/utility_workflow_v2.v0 exists))')) {
+      Constants.logger.info('******************************CHAINCODE already installed - while debugging ******************************');
+      return null;
+    }
     // lets have a look at the responses to see if they are
     // all good, if good they will also include signatures
     // required to be committed
@@ -849,6 +865,8 @@ Error: Error endorsing chaincode: rpc error: code = Unknown desc = chaincode err
 
 Any pointers would be helpful.
 */
+// ERROR: https://hyperledger-fabric.readthedocs.io/en/release-1.3/logging-control.html
+// https://github.com/christo4ferris/node_sdk/blob/master/node-sdk-indepth.md
 async function instantiateChaincode(
   peers,
   channelName,
@@ -862,7 +880,7 @@ async function instantiateChaincode(
 ) {
   Constants.logger.info('*********************** Instantiate chaincode on channel ' + channelName + ' ***********************');
   let errorMessage = null;
-
+  hfc.setConfigSetting('request-timeout', 60000000);
   try {
     // first setup the client for this org
     const client = await getClientForOrg(orgname, username);
@@ -882,13 +900,25 @@ async function instantiateChaincode(
     const deployId = txId.getTransactionID();
 
     // send proposal to endorser
-    const request = {
+    let request = {
       targets: peers,
       chaincodeId: chaincodeName,
       chaincodeType: chaincodeType,
       chaincodeVersion: chaincodeVersion,
       // args: args,
       txId: txId
+      // 'endorsement-policy':
+    };
+
+    request['endorsement-policy'] = {
+      identities: [
+        { role: { name: 'admin', mspId: 'Org1MSP' } },
+        { role: { name: 'admin', mspId: 'Org2MSP' } },
+        { role: { name: 'admin', mspId: 'Org3MSP' } }
+      ],
+      policy: {
+        '1-of': [{ 'signed-by': 0 }, { 'signed-by': 1 }, { 'signed-by': 2 }]
+      }
     };
 
     if (functionName) {
@@ -897,7 +927,9 @@ async function instantiateChaincode(
     // instantiate takes much longer
     let results = null;
     try {
-      results = await channel.sendInstantiateProposal(request, 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000);
+      // ERROR: error: [client-utils.js]: sendPeersProposal - Promise is rejected: Error: REQUEST_TIMEOUT
+      // ERROR: export HFC_LOGGING='{"debug":"console","info":"console"} on the npm start command line
+      results = await channel.sendInstantiateProposal(request, 999999999);
       Constants.logger.info('Sent instantiate proposal');
     } catch (error) {
       Constants.logger.info('In catch - sendInstantiateProposal');
@@ -914,6 +946,7 @@ async function instantiateChaincode(
     Constants.logger.info(proposalResponses);
     Constants.logger.info(proposal);
     Constants.logger.info('Results Done- sendInstantiateProposal');
+
     // lets have a look at the responses to see if they are
     // all good, if good they will also include signatures
     // required to be committed
@@ -953,7 +986,7 @@ async function instantiateChaincode(
             const message = 'REQUEST_TIMEOUT:' + eh.getPeerAddr();
             Constants.logger.info(message);
             eh.disconnect();
-          }, 6000000000000000000000); // setTimeout
+          }, 60000000); // setTimeout
           eh.registerTxEvent(deployId, (tx, code, blockNum) => {
             Constants.logger.info('The chaincode instantiate transaction has been committed on peer %s', eh.getPeerAddr());
             Constants.logger.info('Transaction %s has status of %s in blocl %s', tx, code, blockNum);
@@ -992,6 +1025,8 @@ async function instantiateChaincode(
         proposalResponses: proposalResponses,
         proposal: proposal
       };
+      // ERROR: put an await or use channel event hub 
+      // TODO:
       const sendPromise = channel.sendTransaction(ordererRequest);
       // put the send to the orderer last so that the events get registered and
       // are ready for the orderering and committing
@@ -1042,6 +1077,7 @@ async function instantiateChaincode(
       message: message
     };
   } else {
+    // ERROR: "chaincode error (status: 500, message: chaincode exists utility_workflow)"
     const message = util.format('Failed to instantiate. cause:%s', errorMessage);
     Constants.logger.info(message);
     throw new Error(message);
@@ -1049,3 +1085,39 @@ async function instantiateChaincode(
   return response;
 } // instantiate chaincode
 exports.instantiateChaincode = instantiateChaincode;
+
+
+/*
+hypledvm@hypledvm-VirtualBox:~/go/src/utilitypoc/network/acmedevmode$ docker logs dev-peer0.org1.acme.com-utility_workflow-v0 
+2018-11-02 04:04:31.042 UTC [shim] SetupChaincodeLogging -> INFO 001 Chaincode (build level: 1.1.0) starting up ...
+2018-11-02 04:04:31.045 UTC [bccsp] initBCCSP -> DEBU 002 Initialize BCCSP [SW]
+2018-11-02 04:04:31.062 UTC [shim] userChaincodeStreamGetter -> DEBU 003 Peer address: peer0.org1.acme.com:7052
+2018-11-02 04:04:31.197 UTC [shim] userChaincodeStreamGetter -> DEBU 004 os.Args returns: [chaincode -peer.address=peer0.org1.acme.com:7052]
+2018-11-02 04:04:31.216 UTC [shim] chatWithPeer -> DEBU 005 Registering.. sending REGISTER
+2018-11-02 04:04:31.271 UTC [shim] func1 -> DEBU 006 []Received message REGISTERED from shim
+2018-11-02 04:04:31.272 UTC [shim] handleMessage -> DEBU 007 []Handling ChaincodeMessage of type: REGISTERED(state:created)
+2018-11-02 04:04:31.272 UTC [shim] beforeRegistered -> DEBU 008 Received REGISTERED, ready for invocations
+2018-11-02 04:04:31.291 UTC [shim] func1 -> DEBU 009 [60070bd3]Received message READY from shim
+2018-11-02 04:04:31.291 UTC [shim] handleMessage -> DEBU 00a [60070bd3]Handling ChaincodeMessage of type: READY(state:established)
+2018-11-02 04:04:31.291 UTC [shim] func1 -> DEBU 00b [60070bd3]Received message INIT from shim
+2018-11-02 04:04:31.291 UTC [shim] handleMessage -> DEBU 00c [60070bd3]Handling ChaincodeMessage of type: INIT(state:ready)
+2018-11-02 04:04:31.291 UTC [shim] beforeInit -> DEBU 00d Entered state ready
+2018-11-02 04:04:31.291 UTC [shim] beforeInit -> DEBU 00e [60070bd3]Received INIT, initializing chaincode
+Initializing Utility Workflow
+2018-11-02 04:04:31.294 UTC [utility workflow] Info -> INFO 00f success
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 010 [60070bd3]Init get response status: 200
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 011 [60070bd3]Init succeeded. Sending COMPLETED
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 012 [60070bd3]Move state message COMPLETED
+2018-11-02 04:04:31.294 UTC [shim] handleMessage -> DEBU 013 [60070bd3]Handling ChaincodeMessage of type: COMPLETED(state:ready)
+2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 014 [60070bd3]send state message COMPLETED
+
+code list --instantiated -C mychannelhub.com/hyperledger/fabric/peer# peer chainc
+2018-11-03 20:05:34.984 UTC [msp] GetLocalMSP -> DEBU 001 Returning existing local MSP
+2018-11-03 20:05:34.996 UTC [msp] GetDefaultSigningIdentity -> DEBU 002 Obtaining default signing identity
+2018-11-03 20:05:35.004 UTC [msp/identity] Sign -> DEBU 003 Sign: plaintext: 0A9E070A6608031A0B088FFFF7DE0510...0F0A0D676574636861696E636F646573 
+2018-11-03 20:05:35.004 UTC [msp/identity] Sign -> DEBU 004 Sign: digest: C81FD201B5D8127981A3967F5912AC48B83401D3CC08C510C0117CAD53109055 
+Get instantiated chaincodes on channel mychannel:
+Name: utility_workflow, Version: v0, Path: github.com/utility_workflow, Input: <nil>, Escc: escc, Vscc: vscc
+2018-11-03 20:05:35.446 UTC [main] main -> INFO 005 Exiting.....
+
+*/
