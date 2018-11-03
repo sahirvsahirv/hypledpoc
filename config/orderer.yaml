@@ -42,12 +42,21 @@ General:
         # ServerMinInterval is the minimum permitted time between client pings.
         # If clients send pings more frequently, the server will
         # disconnect them.
+<<<<<<< HEAD
         ServerMinInterval: 66000000s
         # ServerInterval is the time between pings to clients.
         ServerInterval: 66000000s
         # ServerTimeout is the duration the server waits for a response from
         # a client before closing the connection.
         ServerTimeout: 66000000s
+=======
+        ServerMinInterval: 60000000000000000000000000000000000000s
+        # ServerInterval is the time between pings to clients.
+        ServerInterval: 720000000000000000000000000000000000000000s
+        # ServerTimeout is the duration the server waits for a response from
+        # a client before closing the connection.
+        ServerTimeout: 20000000000000000000000000000000000000000000000s
+>>>>>>> f6b857d92d0c0230242993657b60c35462175e83
 
     # Log Level: The level at which to log. This accepts logging specifications
     # per: fabric/docs/Setup/logging-control.md
@@ -182,7 +191,11 @@ Kafka:
         # <LongInterval> for a total of <LongTotal> until they succeed.
         # Note that the orderer will be unable to write to or read from a
         # channel until all of the steps above have been completed successfully.
+<<<<<<< HEAD
         ShortInterval: 66000000s
+=======
+        ShortInterval: 500000000000000000000000000000000000s
+>>>>>>> f6b857d92d0c0230242993657b60c35462175e83
         ShortTotal: 10m
         LongInterval: 5m
         LongTotal: 12h
@@ -190,10 +203,16 @@ Kafka:
         # response, or a transmission. See Config.Net for more info:
         # https://godoc.org/github.com/Shopify/sarama#Config
         NetworkTimeouts:
+<<<<<<< HEAD
         # ERROR: chaincode times out
             DialTimeout: 66000000s
             ReadTimeout: 66000000s
             WriteTimeout: 66000000s
+=======
+            DialTimeout: 1000000000000000000000000000000000000s
+            ReadTimeout: 1000000000000000000000000000000000000000000s
+            WriteTimeout: 1000000000000000000000000000000000000000s
+>>>>>>> f6b857d92d0c0230242993657b60c35462175e83
         # Affects the metadata requests when the Kafka cluster is in the middle
         # of a leader election.See Config.Metadata for more info:
         # https://godoc.org/github.com/Shopify/sarama#Config

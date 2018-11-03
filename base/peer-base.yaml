@@ -21,8 +21,13 @@ services:
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_PROFILE_ENABLED=true
       # https://github.com/hyperledger/caliper/issues/143
+<<<<<<< HEAD
       - CORE_CHAINCODE_STARTUPTIMEOUT=9999999s
       - CORE_CHAINCODE_EXECUTETIMEOUT=9999999s
+=======
+      - CORE_CHAINCODE_STARTUPTIMEOUT=6000000000000000000000000000s
+      - CORE_CHAINCODE_EXECUTETIMEOUT=6000000000000000000000000000s
+>>>>>>> f6b857d92d0c0230242993657b60c35462175e83
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
