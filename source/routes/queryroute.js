@@ -37,8 +37,11 @@ queryRouter.route('/').post((req, res) => {
   // res.setHeader('content-type', 'text/plain');
   // res.end(`you have selected: ${req.body.values}`);
   debug(chalk.green('inside button click'));
+  
   buttonClickQueryLogic();
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.write('query');
+  res.end();
   // res.redirect('/transact');
 });
 // export the name of the function

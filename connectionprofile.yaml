@@ -124,13 +124,8 @@ orderers:
         grpcOptions:
             ssl-target-name-override: orderer.acme.com
             # increasing 15 to 30000
-<<<<<<< HEAD
             grpc-max-send-message-length: 66000000
             request-timeout: 66000000
-=======
-            grpc-max-send-message-length: 10000000
-            request-timeout: 10000000
->>>>>>> f6b857d92d0c0230242993657b60c35462175e83
         #not a grpc options value
         tlsCACerts:
             #relative path without quotes - UnhandledPromiseRejectionWarning: Error: invalid grpc option value:tlsCACerts-> [object Object] expected string|integer
@@ -141,13 +136,8 @@ peers:
         eventUrl: grpcs://localhost:7053
         grpcOptions:
             ssl-target-name-override: peer0.org1.acme.com
-<<<<<<< HEAD
             grpc.keepalive_time_ms: 66000000
             request-timeout: 66000000
-=======
-            grpc.keepalive_time_ms: 10000000
-            request-timeout: 10000000
->>>>>>> f6b857d92d0c0230242993657b60c35462175e83
         tlsCACerts:
             path: crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/tls/ca.crt
 
@@ -156,13 +146,8 @@ peers:
         eventUrl: grpcs://localhost:8053
         grpcOptions:
             ssl-target-name-override: peer0.org2.acme.com
-<<<<<<< HEAD
             grpc.keepalive_time_ms: 66000000
             request-timeout: 66000000
-=======
-            grpc.keepalive_time_ms: 10000000
-            request-timeout: 10000000
->>>>>>> f6b857d92d0c0230242993657b60c35462175e83
         #same level as grpcOptions (Error: invalid grpc option value:tlsCACerts)
         tlsCACerts:
             path: crypto-config/peerOrganizations/org2.acme.com/peers/peer0.org2.acme.com/tls/ca.crt
@@ -172,15 +157,9 @@ peers:
         eventUrl: grpcs://localhost:9053
         grpcOptions:
             ssl-target-name-override: peer0.org3.acme.com
-<<<<<<< HEAD
             grpc.keepalive_time_ms: 66000000
             #Added this for getGenesisBlock timeout
             request-timeout: 66000000
-=======
-            grpc.keepalive_time_ms: 10000000
-            #Added this for getGenesisBlock timeout
-            request-timeout: 10000000
->>>>>>> f6b857d92d0c0230242993657b60c35462175e83
         tlsCACerts:
             path: crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/tls/ca.crt
 
