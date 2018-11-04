@@ -323,6 +323,19 @@ async function createChannelForOrg(channelName, username, orgname) {
     // create a channel
     // TO create the channel - the network should be running
     let response = null;
+
+    // ERROR: got to know while debugging
+    // Expected directory: node-v64-linux-x64-glibc
+    // npm rebuild --target=8.1.0 --target_platform=linux --target_arch=x64 --target_libc=glibc --update-binary
+    // Found: [node-v57-linux-x64-glibc]
+    //  _createOrUpdateChannel error Missing all required input request parameters for initialize channel
+    // TypeError: client.getPeer is not a function
+    // https://registry.npmjs.org/node-v64-linux-x64-glibc not found
+    // npm rebuild
+    // https://groups.google.com/forum/#!topic/grpc-io/pUB3JgyxipQ
+    // http://blog.chapagain.com.np/hyperledger-fabric-error-failed-to-load-grpc-binary-module-because-it-was-not-installed-for-the-current-system/
+    // Worked after npm install fabric-client 1.2.2 and fabric-ca-client and grpc- 1.15.1 - now i have both
+    // debugger does nopt work
     Constants.logger.info('****************** GETCHANNEL - CATCH ************************');
     try {
       Constants.logger.info('****************** CREATECHANNEL - CALLED ************************');
@@ -947,7 +960,7 @@ async function instantiateChaincode(
     try {
       // ERROR: error: [client-utils.js]: sendPeersProposal - Promise is rejected: Error: REQUEST_TIMEOUT
       // ERROR: export HFC_LOGGING='{"debug":"console","info":"console"} on the npm start command line
-      results = await channel.sendInstantiateProposal(request, 999999999);
+      results = await channel.sendInstantiateProposal(request, 600000000);
       Constants.logger.info('Sent instantiate proposal');
     } catch (error) {
       Constants.logger.info('In catch - sendInstantiateProposal');

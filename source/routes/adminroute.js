@@ -91,8 +91,6 @@ async function buttonClickLogic() {
 
     Constants.logger.info('****************************Create Channel for ORG1****************************');
     await ClientUtils.createChannelForOrg(ClientUtils.getChannelNameFromConfig(), ClientUtils.getUserName(), Constants.ORG1);
-    
-    
     Constants.logger.info('****************************JOIN Channel for ORG1****************************');
     await ClientUtils.joinChannel([Constants.peer0org1], ClientUtils.getUserName(), Constants.ORG1);
 
@@ -131,19 +129,20 @@ async function buttonClickLogic() {
 
     // https://hyperledger-fabric.readthedocs.io/en/release-1.1/chaincode4ade.html build and start chaincode
     // TODO: make this into a link - configurable
-    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow_v6', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
+    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow_v12', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
-    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow_v6', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
+    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow_v12', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG3****************************');
-    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow_v6', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
+    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow_v12', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
 
     // Instantiate chaincode on one of the peeers in org1
     // Error: peer0.org1.acme.com    | 2018-10-31 18:28:38.291 UTC [lscc] executeDeployOrUpgrade -> ERRO 35fe cannot get package for chaincode (utility_workflow:v0)-err:open /var/hyperledger/production/chaincodes/utility_workflow.v0: no such file or directory
     // Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
     // ERROR: To change for query and move - instantiate with parameters and the chaincode has put state code
-    await ClientUtils.instantiateChaincode([Constants.peer0org1], 'mychannel', 'utility_workflow_v2', 'v0', 'init', 'golang', '["a", "100", "b", "200"]', ClientUtils.getUserName(), Constants.ORG1);
+    // npm rebuild --target=8.1.0 --target_platform=linux --target_arch=x64 --target_libc=glibc --update-binary
+    await ClientUtils.instantiateChaincode([Constants.peer0org1, Constants.peer0org2, Constants.peer0org3], 'mychannel', 'utility_workflow_v12', 'v0', 'init', 'golang', '["a", "100", "b", "200"]', ClientUtils.getUserName(), Constants.ORG1);
   }; // async fuexportsnction end
   // ERROR: to mexportsake the function call, had to call the clientpromise()
   const clientpromise = asyncfunction();
