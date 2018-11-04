@@ -62,7 +62,8 @@ app.use('/js', express.static(path.join(__dirname, 'node_modules/jquery/dist')))
 
 const navigate = [
   { link: '/transact', title: 'Transact' },
-  { link: '/admin', title: 'Admin' }
+  { link: '/admin', title: 'Admin' },
+  { link: '/query', title: 'Query' }
 ];
 
 // set the route and pass navigate - searches for the module transact and admin
@@ -70,6 +71,8 @@ const navigate = [
 // name of the js file needs to be given here
 const transactrouter = require('./source/routes/transactroute')(navigate);
 const adminrouter = require('./source/routes/adminroute')(navigate);
+const queryrouter = require('./source/routes/queryroute')(navigate);
+// const transactrouter = require('./source/routes/queryroute')(navigate);
 // const adminRouter = require('./source/views/admin')(navigate);
 
 // for the app's configuration details - START
@@ -80,8 +83,11 @@ const port = process.env.PORT || hfc.getConfigSetting('port');
 // use the modules - the same constant declared above
 app.use('/transact', transactrouter);
 app.use('/admin', adminrouter);
+app.use('/query', queryrouter);
 
-// ident using 2 spaces on the blue bar
+// app.use('/transaction', transactroutconst express = require('express');
+// ident using 2 spaces on the blue barconst express = require('express');
+
 // will only come here after there is a route - " cannot GET /"
 
 // working - had to restart nodemon : port is not working

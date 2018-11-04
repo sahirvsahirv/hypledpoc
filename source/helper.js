@@ -880,11 +880,7 @@ async function instantiateChaincode(
 ) {
   Constants.logger.info('*********************** Instantiate chaincode on channel ' + channelName + ' ***********************');
   let errorMessage = null;
-<<<<<<< HEAD
   hfc.setConfigSetting('request-timeout', 60000000);
-=======
-  hfc.setConfigSetting('request-timeout', 990000000000000000);
->>>>>>> f6b857d92d0c0230242993657b60c35462175e83
   try {
     // first setup the client for this org
     const client = await getClientForOrg(orgname, username);
@@ -933,11 +929,7 @@ async function instantiateChaincode(
     try {
       // ERROR: error: [client-utils.js]: sendPeersProposal - Promise is rejected: Error: REQUEST_TIMEOUT
       // ERROR: export HFC_LOGGING='{"debug":"console","info":"console"} on the npm start command line
-<<<<<<< HEAD
       results = await channel.sendInstantiateProposal(request, 999999999);
-=======
-      results = await channel.sendInstantiateProposal(request, 999999);
->>>>>>> f6b857d92d0c0230242993657b60c35462175e83
       Constants.logger.info('Sent instantiate proposal');
     } catch (error) {
       Constants.logger.info('In catch - sendInstantiateProposal');
@@ -1017,7 +1009,7 @@ async function instantiateChaincode(
             Constants.logger.info(err);
             reject(err);
           }, // registerTxEvent promise
-          // the default for 'unregister' is true for transaction listeners
+          // therequest default for 'unregister' is true for transaction listeners
           // so no real need to set here, however for 'disconnect'
           // the default is false as most event hubs are long running
           // in this use case we are using it only once
@@ -1121,7 +1113,6 @@ Initializing Utility Workflow
 2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 012 [60070bd3]Move state message COMPLETED
 2018-11-02 04:04:31.294 UTC [shim] handleMessage -> DEBU 013 [60070bd3]Handling ChaincodeMessage of type: COMPLETED(state:ready)
 2018-11-02 04:04:31.294 UTC [shim] func1 -> DEBU 014 [60070bd3]send state message COMPLETED
-<<<<<<< HEAD
 
 code list --instantiated -C mychannelhub.com/hyperledger/fabric/peer# peer chainc
 2018-11-03 20:05:34.984 UTC [msp] GetLocalMSP -> DEBU 001 Returning existing local MSP
@@ -1133,8 +1124,3 @@ Name: utility_workflow, Version: v0, Path: github.com/utility_workflow, Input: <
 2018-11-03 20:05:35.446 UTC [main] main -> INFO 005 Exiting.....
 
 */
-=======
-*/
-
-// ERROR: broken pipe - [peer channel fetch --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/acme.com/orderers/orderer.acme.com/msp/tlscacerts/tlsca.acme.com-cert.pem]
->>>>>>> f6b857d92d0c0230242993657b60c35462175e83
