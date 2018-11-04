@@ -294,7 +294,8 @@ async function createChannelForOrg(channelName, username, orgname) {
     //  TODO: https://stackoverflow.com/questions/46449327/how-to-get-all-existing-channels-in-hyperledger-1-0-node-sdk
     // This or try getGenesisBlock and in catch add this
     // null or channelName - tried both
-    const channel = client.getChannel(channelName, true);
+    Constants.logger.info('****************** CHANGED IT TO NYLLLLLLL ************************');
+    const channel = client.getChannel(null, true);
     Constants.logger.info('****************** GETCHANNEL - CALLED ************************');
     Constants.logger.info(channel);
     Constants.logger.info('****************** GETCHANNEL - PRINTED CHANNEL ************************');
@@ -475,6 +476,8 @@ async function joinChannel(peers, username, orgname) {
     // Add peer
     try {
       // get peer from channel
+      // ERROR: channel.getPeer not a function
+      // ERROR: did not receive channel from client in case getChannel returned an exception
       const channelPeer = channel.getPeer(peers[0]);
       Constants.logger.info('****************** channel.getPeer:: SUCCESS ************************');
       Constants.logger.info(channelPeer);
@@ -484,6 +487,14 @@ async function joinChannel(peers, username, orgname) {
       // get from the client and add it to the channel
       Constants.logger.info('****************** channel.getPeer:: FAILURE - getPeer from client and add it to the channel ************************');
       // TODO: Put a for loop here
+      // ERROR: client.getPeer not a function
+      // nvm use 8.9.4 not the 8.11.3 (nvm ls). Another problem was to downgrade
+      // the fabric-tools and fabric-ca-tools. do a npm install of the right version
+      // similar to the peer and the old one gets deleted automatically
+      // npm list fabric-client
+      // ERROR:  client.getPeer(peers[0]) not a function
+      // fabric-sdk-node - npm uninstall
+      // clue from here - deprecated https://www.npmjs.com/package/fabric-sdk-node
       const peer1 = client.getPeer(peers[0]);
       Constants.logger.info('****************** client.getPeer:: SUCCESS ************************');
       Constants.logger.info(peer1);
@@ -766,18 +777,23 @@ async function installChaincode(
   // if ((queryResponse.chaincodes.length !== 0)
   // ERROR: installed chaincode and failed while instantiate fails because
   // thinks it is not installed and gives a proposal response that chaincode exists
-  if ((queryResponse.chaincodes.length !== 2)
-    && ((queryResponse.chaincodes[0].name === chaincodeName)
-    || (queryResponse.chaincodes[1].name === chaincodeName))) {
-    // TODO: check the name version etc and see if it matches
-    Constants.logger.info('******************************CHAINCODE already installed ******************************');
-    return null;
+  if (queryResponse.chaincodes.length !== 0) {
+    Constants.logger.info('******************************Some chaoincodes are already there');
   }
-  if ((queryResponse.chaincodes.length === 3)
-    && (queryResponse.chaincodes[0].name === chaincodeName)) {
-    Constants.logger.info('******************************CHAINCODE already installed - while debugging - the current one being tried ******************************');
-    return null;
-  }
+    /*
+      if ((queryResponse.chaincodes.length !== 2)
+      && ((queryResponse.chaincodes[0].name === chaincodeName)
+      || (queryResponse.chaincodes[1].name === chaincodeName))) {
+      // TODO: check the name version etc and see if it matches
+      Constants.logger.info('******************************CHAINCODE already installed ******************************');
+      return null;
+    }
+    if ((queryResponse.chaincodes.length === 3)
+      && (queryResponse.chaincodes[0].name === chaincodeName)) {
+      Constants.logger.info('******************************CHAINCODE already installed - while debugging - the current one being tried ******************************');
+      return null;
+    }*/
+  
   setupChaincodeDeploy();
   let errorMessage = null;
   try {
@@ -867,6 +883,8 @@ Any pointers would be helpful.
 */
 // ERROR: https://hyperledger-fabric.readthedocs.io/en/release-1.3/logging-control.html
 // https://github.com/christo4ferris/node_sdk/blob/master/node-sdk-indepth.md
+
+// //// peer chaincode instantiate -n mycc5 -v 0 -c '{"Args":["init","a","10","b","20"]}' -C myc
 async function instantiateChaincode(
   peers,
   channelName,
@@ -905,7 +923,7 @@ async function instantiateChaincode(
       chaincodeId: chaincodeName,
       chaincodeType: chaincodeType,
       chaincodeVersion: chaincodeVersion,
-      // args: args,
+      args: args,
       txId: txId
       // 'endorsement-policy':
     };
@@ -1029,10 +1047,23 @@ async function instantiateChaincode(
         proposal: proposal
       };
       // ERROR: put an await or use channel event hub 
+      // ERROR: rror (status: 500, message:  is not a valid endorsement system chaincode)", metadata - , endorsement signature
+      // https://github.com/hyperledger/caliper/issues/175
       // TODO:
       const sendPromise = channel.sendTransaction(ordererRequest);
       // put the send to the orderer last so that the events get registered and
       // are ready for the orderering and committing
+
+      // ERROR:  Error: 2 UNKNOWN: chaincode error (status: 500, message:  is not a valid endorsement system chaincode)
+      // https://github.com/hyperledger/caliper/issues/149
+      /* remove it globally 1.15.1 and then install 1.10.1
+      npm ls grpc
+      DRWebapp@1.0.0 /home/hypledvm/go/src/utilitypoc/network/acmedevmode
+      ├─┬ fabric-client@1.2.2
+      │ └── grpc@1.10.1
+      └── grpc@1.10.1
+      */
+
       promises.push(sendPromise);
       results = await Promise.all(promises);
       Constants.logger.info(util.format('------->>> R E S P O N S E : %j', results));

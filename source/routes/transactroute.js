@@ -9,18 +9,19 @@ const ClientUtils = require('../helper.js');
 
 const transactRouter = express.Router();
 
+// peer chaincode invoke -n mycc5 -c '{"Args":["move", "a", "b", "2"]}' -C myc
 // TODO: try 2 buttons on a single page - did not work
 async function buttonClickTransactLogic() {
   Constants.logger.info('****************** INSIDE TRANSACT CLICK ************************');
-  const errorMessage = null;
+  let errorMessage = null;
   let txIdString = null;
-
+  // TODO: Redirect to query page 
   try {
     // first setup the client for this org
     const username = ClientUtils.getUserName();
     const orgname = Constants.ORG1;
 
-    Constants.logger.info('****************************ORG1****************************');
+    Constants.logger.info('****************************get client for org****************************');
     const client = await ClientUtils.getClientForOrg(orgname, username);
     Constants.logger.info(client);
     Constants.logger.info('****************** returned from registering the username %s for organization %s ************************', username, orgname);
@@ -34,12 +35,13 @@ async function buttonClickTransactLogic() {
     // will need the transaction ID string for the event registration later
     txIdString = txId.getTransactionID();
 
+    // TODO: take it from the GUI
     // send proposal to endorser
     const request = {
       targets: [Constants.peer0org1],
-      chaincodeId: 'utility_workflow',
-      fcn: 'invoke',
-      args: [],
+      chaincodeId: 'utility_workflow_v3',
+      fcn: 'move', // ERROR: to make move happen in the chaincode
+      args: ['a', 'b', '2'], // ERROR: to make move happen in the chaincode
       chainId: 'mychannel',
       txId: txId
     };
@@ -212,4 +214,13 @@ module.exports = transrouter;
 2018-11-04 02:22:41.831 UTC [fsblkstorage] nextBlockBytesAndPlacementInfo -> DEBU cd9 Remaining bytes=[4651], Going to peek [8] bytes
 2018-11-04 02:22:41.831 UTC [fsblkstorage] nextBlockBytesAndPlacementInfo -> DEBU cda Returning blockbytes - length=[4649], placementInfo={fileNum=[0], startOffset=[30607], bytesOffset=[30609]}
 
+*/
+
+/*
+********
+info: [APPLICATION]: ****************************INVOKE SUCCESS****************************
+info: [APPLICATION]: Successfully sent Proposal and received ProposalResponse: Status - 200, message - "OK", metadata - "", endorsement signature: 0E!{������Ib` r��VY���+q�YQg���� +�'�r�>xU�S<��vw�,{J�՚����l
+info: [APPLICATION]: ------->>> R E S P O N S E : [{"status":"SUCCESS","info":""}]
+info: [APPLICATION]: Successfully sent transaction to the orderer.
+info: [APPLICATION]: Successfully invoked the chaincode Org1 to the channel 'mychannel' for transaction ID: faa8d4273bf79c77a20049da1591bc5401adc61ce5301dffca6af10c6c78ef8f
 */
