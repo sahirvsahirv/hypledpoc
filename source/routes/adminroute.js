@@ -129,20 +129,44 @@ async function buttonClickLogic() {
 
     // https://hyperledger-fabric.readthedocs.io/en/release-1.1/chaincode4ade.html build and start chaincode
     // TODO: make this into a link - configurable
-    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow_v12', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
+
+
+    // TO remove grpc 1.15.1 - remove the grpc dependency from package.json , remove all ^, > etc
+    // keep it exact
+    // rm -rf node_modules/grpc and npm rebuild
+    // DRWebapp@1.0.0 /home/hypledvm/go/src/utilitypoc/network/acmedevmode
+    // +-- fabric-client@1.2.2
+    // | `-- grpc@1.10.1 
+    // `-- UNMET DEPENDENCY grpc@1.10.1
+    // no mention of grpc in package.json
+    // npm install grpc@1.10.1 to remove the unmet dependency - 1.15.1 at the top level is gone now
+    await ClientUtils.installChaincode([Constants.peer0org1], 'utility_workflow_v21', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG1);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG2****************************');
-    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow_v12', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
+    await ClientUtils.installChaincode([Constants.peer0org2], 'utility_workflow_v21', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG2);
 
     Constants.logger.info('****************************INSTALL Chaincode for ORG3****************************');
-    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow_v12', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
+    await ClientUtils.installChaincode([Constants.peer0org3], 'utility_workflow_v21', 'github.com/utility_workflow', 'v0', 'go', ClientUtils.getUserName(), Constants.ORG3);
 
     // Instantiate chaincode on one of the peeers in org1
     // Error: peer0.org1.acme.com    | 2018-10-31 18:28:38.291 UTC [lscc] executeDeployOrUpgrade -> ERRO 35fe cannot get package for chaincode (utility_workflow:v0)-err:open /var/hyperledger/production/chaincodes/utility_workflow.v0: no such file or directory
     // Constants.logger.info('****************************INSTANTIATE Chaincode for ORG1****************************');
     // ERROR: To change for query and move - instantiate with parameters and the chaincode has put state code
     // npm rebuild --target=8.1.0 --target_platform=linux --target_arch=x64 --target_libc=glibc --update-binary
-    await ClientUtils.instantiateChaincode([Constants.peer0org1, Constants.peer0org2, Constants.peer0org3], 'mychannel', 'utility_workflow_v12', 'v0', 'init', 'golang', '["a", "100", "b", "200"]', ClientUtils.getUserName(), Constants.ORG1);
+    // cp utility_workflow.go ~/go/src/utilitypoc/chaincode/src/github.com/utility_workflow - the code needs to be here
+    // This is the correct code location
+    // TODO: why does it take it from this path?????????????????????
+    // got to know from grep -rnw of the chaincode
+    // ERROR: when only constant.peer0Org1 is sent
+    // info: [APPLICATION]: found 0 eventhubs for this organization Org1
+    // error: [Channel.js]: sendTransaction - no valid endorsements found
+    // info: [APPLICATION]: Error: no valid endorsements found
+    await ClientUtils.instantiateChaincode([Constants.peer0org1, Constants.peer0org2, Constants.peer0org3], 'mychannel', 'utility_workflow_v21', 'v0', 'init', 'golang', ['a', '100', 'b', '200'], ClientUtils.getUserName(), Constants.ORG1);
+
+    // ERROR: everything is working but the correct code is not getting called. checked in docker-compose-base.yaml
+    // Cannot start the ledger again since the API version problem comes and the channel cannot get created 
+    // again.  ../../../../github.com:/opt/go/src/github.com/ . Copy the latest files to src/ under this path.
+    // this will make the chaincode container build using the latest code
   }; // async fuexportsnction end
   // ERROR: to mexportsake the function call, had to call the clientpromise()
   const clientpromise = asyncfunction();

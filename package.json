@@ -17,8 +17,9 @@
     "debug": "^4.0.1",
     "empty-promise": "^1.2.0",
     "express": "^4.16.3",
-    "fabric-ca-client": "^1.2.2",
-    "fabric-client": "^1.2.2",
+    "fabric-ca-client": "^1.1.0",
+    "fabric-client": "^1.1.0",
+    "grpc": "^1.10.1",
     "jquery": "^3.3.1",
     "morgan": "^1.9.1",
     "nodemon": "^1.18.4",
@@ -27,14 +28,13 @@
     "superagent": "^4.0.0-beta.5"
   },
   "engines": {
-    "node": ">=8.9.4 <9.0",
-    "npm": ">=5.6.0 <6.0"
+    "node": "8.9.4",
+    "npm": "5.6.0"
   },
   "devDependencies": {
     "eslint": "^5.6.1",
     "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.14.0",
-    "grpc": "^1.10.1"
+    "eslint-plugin-import": "^2.14.0"
   },
   "nodemonConfig": {
     "restartable": "rs",

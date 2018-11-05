@@ -9,7 +9,7 @@ const ClientUtils = require('../helper.js');
 
 const transactRouter = express.Router();
 
-// peer chaincode invoke -n mycc5 -c '{"Args":["move", "a", "b", "2"]}' -C myc
+// peer chaincode invoke -n utility_workflow_v15 -c '{"Args":["move", "a", "b", "2"]}' -C mychannel
 // TODO: try 2 buttons on a single page - did not work
 async function buttonClickTransactLogic() {
   Constants.logger.info('****************** INSIDE TRANSACT CLICK ************************');
@@ -39,9 +39,9 @@ async function buttonClickTransactLogic() {
     // send proposal to endorser
     const request = {
       targets: [Constants.peer0org1],
-      chaincodeId: 'utility_workflow_v3',
+      chaincodeId: 'utility_workflow_v21',
       fcn: 'move', // ERROR: to make move happen in the chaincode
-      args: ['a', 'b', '2'], // ERROR: to make move happen in the chaincode
+      args: ['a', 'b', '20'], // ERROR: to make move happen in the chaincode
       chainId: 'mychannel',
       txId: txId
     };
